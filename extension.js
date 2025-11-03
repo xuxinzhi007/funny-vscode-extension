@@ -44,6 +44,25 @@ const achievements = [
   { id: 'coin_factory', name: '金币工厂', description: '每秒产出超过100金币', requirement: () => gameState.coinsPerSecond >= 100, unlocked: false }
 ];
 
+// 抽奖奖品配置
+const lotteryPrizes = [
+  { id: 'coins_50', name: '50金币', type: 'coins', value: 50, color: '#95a5a6', probability: 30 },
+  { id: 'coins_100', name: '100金币', type: 'coins', value: 100, color: '#3498db', probability: 25 },
+  { id: 'coins_200', name: '200金币', type: 'coins', value: 200, color: '#9b59b6', probability: 15 },
+  { id: 'boost_2x', name: '2倍加速', type: 'boost', value: 2, duration: 300, color: '#2ecc71', probability: 12 },
+  { id: 'discount_50', name: '5折券', type: 'discount', value: 0.5, color: '#f39c12', probability: 10 },
+  { id: 'coins_500', name: '500金币', type: 'coins', value: 500, color: '#e74c3c', probability: 5 },
+  { id: 'boost_5x', name: '5倍加速', type: 'boost', value: 5, duration: 180, color: '#e67e22', probability: 2 },
+  { id: 'jackpot', name: '超级大奖', type: 'coins', value: 2000, color: '#f1c40f', probability: 1 }
+];
+
+// 抽奖价格
+const lotteryPrices = {
+  normal: 100,    // 普通抽奖
+  advanced: 500,  // 高级抽奖
+  super: 2000     // 超级抽奖
+};
+
 // 游戏辅助函数
 function calculateCoinsPerSecond() {
   let total = 1; // 基础产出
@@ -67,6 +86,80 @@ function formatNumber(num) {
   if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
   if (num >= 1000) return (num / 1000).toFixed(2) + 'K';
   return Math.floor(num).toString();
+}
+
+// ========== 抽奖系统 ==========
+
+// 根据概率抽取奖品
+function drawPrize() {
+  const totalProbability = lotteryPrizes.reduce((sum, prize) => sum + prize.probability, 0);
+  let random = Math.random() * totalProbability;
+
+  for (const prize of lotteryPrizes) {
+    random -= prize.probability;
+    if (random <= 0) {
+      return prize;
+    }
+  }
+
+  return lotteryPrizes[0]; // 保底
+}
+
+// 发放奖励
+function grantPrize(prize, context) {
+  switch (prize.type) {
+    case 'coins':
+      gameState.coins += prize.value;
+      gameState.totalCoinsEarned += prize.value;
+      vscode.window.showInformationMessage(`🎉 恭喜获得 ${prize.value} 金币！`);
+      break;
+
+    case 'boost':
+      // 应用加速效果
+      if (!gameState.activeBoosts) {
+        gameState.activeBoosts = [];
+      }
+      const boostEndTime = Date.now() + prize.duration * 1000;
+      gameState.activeBoosts.push({
+        type: 'production',
+        multiplier: prize.value,
+        endTime: boostEndTime
+      });
+      vscode.window.showInformationMessage(`🚀 获得 ${prize.value}x 加速效果，持续 ${Math.floor(prize.duration / 60)} 分钟！`);
+      break;
+
+    case 'discount':
+      // 应用折扣券
+      if (!gameState.activeDiscounts) {
+        gameState.activeDiscounts = [];
+      }
+      gameState.activeDiscounts.push({
+        multiplier: prize.value,
+        usesLeft: 3 // 可使用3次
+      });
+      vscode.window.showInformationMessage(`🎫 获得 ${Math.floor((1 - prize.value) * 10)} 折优惠券，可使用3次！`);
+      break;
+  }
+
+  checkAchievements();
+  saveGameState(context);
+}
+
+// 计算实际产出（包含加速效果）
+function getEffectiveProduction() {
+  let baseProduction = calculateCoinsPerSecond();
+  let multiplier = 1;
+
+  if (gameState.activeBoosts) {
+    const now = Date.now();
+    gameState.activeBoosts = gameState.activeBoosts.filter(boost => boost.endTime > now);
+
+    gameState.activeBoosts.forEach(boost => {
+      multiplier *= boost.multiplier;
+    });
+  }
+
+  return baseProduction * multiplier;
 }
 
 // ========== 文件存储功能 ==========
@@ -298,8 +391,17 @@ function activate(context) {
 
   function updateCoinStatusBar() {
     const coins = formatNumber(gameState.coins);
-    const rate = formatNumber(gameState.coinsPerSecond);
-    coinStatusBarItem.text = `$(star-full) ${coins} (+${rate}/s)`;
+    const effectiveRate = getEffectiveProduction();
+    const rate = formatNumber(effectiveRate);
+
+    let boostText = '';
+    if (gameState.activeBoosts && gameState.activeBoosts.length > 0) {
+      const boost = gameState.activeBoosts[0];
+      const remainingTime = Math.ceil((boost.endTime - Date.now()) / 1000);
+      boostText = ` 🚀${boost.multiplier}x`;
+    }
+
+    coinStatusBarItem.text = `$(star-full) ${coins} (+${rate}/s)${boostText}`;
     coinStatusBarItem.tooltip = `💰 金币: ${coins}\n⚡ 产出: +${rate}/秒\n🏆 成就: ${gameState.achievements.length}/${achievements.length}\n\n点击打开游戏面板`;
   }
   updateCoinStatusBar();
@@ -336,8 +438,9 @@ function activate(context) {
   // 每秒增加金币定时器
   const coinTimer = setInterval(() => {
     gameState.coinsPerSecond = calculateCoinsPerSecond();
-    gameState.coins += gameState.coinsPerSecond;
-    gameState.totalCoinsEarned += gameState.coinsPerSecond;
+    const effectiveProduction = getEffectiveProduction();
+    gameState.coins += effectiveProduction;
+    gameState.totalCoinsEarned += effectiveProduction;
     updateCoinStatusBar();
     checkAchievements();
   }, 1000);
@@ -392,7 +495,6 @@ class IdleGameViewProvider {
             gameState.coins += 1;
             gameState.totalCoinsEarned += 1;
             checkAchievements();
-            this.refresh();
             saveGameState(this._context);
             break;
 
@@ -405,8 +507,14 @@ class IdleGameViewProvider {
                 upgrade.count++;
                 gameState.coinsPerSecond = calculateCoinsPerSecond();
                 checkAchievements();
-                this.refresh();
                 saveGameState(this._context);
+                // 发送即时更新
+                this._view.webview.postMessage({
+                  command: 'upgradeSuccess',
+                  upgradeKey: message.upgradeKey,
+                  newCount: upgrade.count,
+                  newProduction: upgrade.count * upgrade.production
+                });
               }
             }
             break;
@@ -417,6 +525,22 @@ class IdleGameViewProvider {
 
           case 'backupSave':
             backupGameSave(this._context);
+            break;
+
+          case 'lottery':
+            // 抽奖逻辑
+            if (gameState.coins >= lotteryPrices.normal) {
+              gameState.coins -= lotteryPrices.normal;
+              const prize = drawPrize();
+
+              // 延迟发放奖励，配合动画
+              setTimeout(() => {
+                grantPrize(prize, this._context);
+              }, 4000);
+            } else {
+              vscode.window.showWarningMessage('金币不足，无法抽奖！');
+            }
+            saveGameState(this._context);
             break;
 
           case 'resetGame':
@@ -443,10 +567,21 @@ class IdleGameViewProvider {
       }
     );
 
-    // 每秒更新视图
+    // 每秒发送数据更新（不刷新HTML）
     const updateTimer = setInterval(() => {
       if (this._view) {
-        this.refresh();
+        this._view.webview.postMessage({
+          command: 'updateGameState',
+          data: {
+            coins: gameState.coins,
+            coinsPerSecond: gameState.coinsPerSecond,
+            totalCoinsEarned: gameState.totalCoinsEarned,
+            achievements: gameState.achievements,
+            startTime: gameState.startTime,
+            activeBoosts: gameState.activeBoosts,
+            upgrades: gameState.upgrades
+          }
+        });
       }
     }, 1000);
 
@@ -651,6 +786,170 @@ class IdleGameViewProvider {
             background: var(--vscode-button-secondaryHoverBackground);
           }
 
+          /* 标签页系统 */
+          .tabs-container {
+            display: flex;
+            gap: 4px;
+            padding: 0 8px;
+            background: var(--vscode-editor-background);
+            border-bottom: 1px solid var(--vscode-panel-border);
+            margin: -8px -8px 8px -8px;
+            overflow-x: auto;
+            scrollbar-width: thin;
+          }
+          .tab {
+            padding: 8px 12px;
+            font-size: 11px;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: var(--vscode-foreground);
+            opacity: 0.6;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+          }
+          .tab:hover {
+            opacity: 0.8;
+            background: var(--vscode-list-hoverBackground);
+          }
+          .tab.active {
+            opacity: 1;
+            border-bottom-color: var(--vscode-focusBorder);
+            font-weight: bold;
+          }
+          .tab-content {
+            display: none;
+            animation: fadeIn 0.3s;
+          }
+          .tab-content.active {
+            display: block;
+          }
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+
+          /* 抽奖转盘 */
+          .lottery-container {
+            position: relative;
+            width: 100%;
+            max-width: 250px;
+            margin: 15px auto;
+          }
+          .wheel-wrapper {
+            position: relative;
+            width: 100%;
+            padding-bottom: 100%;
+          }
+          .wheel {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+          }
+          .wheel.spinning {
+            animation: wheelSpin 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+          }
+          @keyframes wheelSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(1800deg); }
+          }
+          .prize-sector {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            transform-origin: 100% 100%;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 15%;
+            font-size: 9px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 3px rgba(0,0,0,0.5);
+          }
+          .wheel-pointer {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-top: 20px solid #ff0000;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+            z-index: 10;
+          }
+          .wheel-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+          }
+          .lottery-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 6px;
+            margin-top: 10px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+          }
+          .lottery-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+          }
+          .lottery-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+          }
+          .lottery-info {
+            font-size: 9px;
+            text-align: center;
+            opacity: 0.7;
+            margin-top: 5px;
+          }
+
+          /* 中奖特效 */
+          .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: #f1c40f;
+            position: absolute;
+            animation: confetti-fall 3s ease-out forwards;
+          }
+          @keyframes confetti-fall {
+            to {
+              transform: translateY(300px) rotate(360deg);
+              opacity: 0;
+            }
+          }
+
           /* 响应式：窄屏模式 */
           @media (max-width: 250px) {
             body { padding: 4px; }
@@ -679,37 +978,189 @@ class IdleGameViewProvider {
         </style>
       </head>
       <body>
-        <div class="stats">
-          <div class="coins">💰 ${formatNumber(gameState.coins)}</div>
-          <div class="rate">⚡ +${formatNumber(gameState.coinsPerSecond)}/s</div>
-          <button class="click-btn" onclick="clickCoin()">点击 +1</button>
-          <div class="mini-stats">
-            <span>总: ${formatNumber(gameState.totalCoinsEarned)}</span>
-            <span>成就: ${gameState.achievements.length}/${achievements.length}</span>
-            <span>${Math.floor((Date.now() - gameState.startTime) / 60000)}分钟</span>
+        <!-- 标签导航 -->
+        <div class="tabs-container">
+          <button class="tab active" onclick="switchTab('home')">🏠 首页</button>
+          <button class="tab" onclick="switchTab('upgrade')">🏭 升级</button>
+          <button class="tab" onclick="switchTab('lottery')">🎰 抽奖</button>
+          <button class="tab" onclick="switchTab('achievement')">🏆 成就</button>
+          <button class="tab" onclick="switchTab('settings')">⚙️ 设置</button>
+        </div>
+
+        <!-- 首页标签 -->
+        <div class="tab-content active" id="tab-home">
+          <div class="stats">
+            <div class="coins">💰 ${formatNumber(gameState.coins)}</div>
+            <div class="rate">⚡ +${formatNumber(gameState.coinsPerSecond)}/s</div>
+            <button class="click-btn" onclick="clickCoin()">点击 +1</button>
+            <div class="mini-stats">
+              <span>总: ${formatNumber(gameState.totalCoinsEarned)}</span>
+              <span>成就: ${gameState.achievements.length}/${achievements.length}</span>
+              <span>${Math.floor((Date.now() - gameState.startTime) / 60000)}分钟</span>
+            </div>
           </div>
         </div>
 
-        <div class="section">
-          <div class="title">
-            <span>🏭 自动化升级</span>
+        <!-- 升级标签 -->
+        <div class="tab-content" id="tab-upgrade">
+          <div class="section">
+            <div class="title">
+              <span>🏭 自动化升级</span>
+            </div>
+            ${upgradesList}
           </div>
-          ${upgradesList}
         </div>
 
-        <div class="section">
-          <div class="title">
-            <span>🏆 成就 (${gameState.achievements.length}/${achievements.length})</span>
+        <!-- 抽奖标签 -->
+        <div class="tab-content" id="tab-lottery">
+          <div class="section">
+            <div class="title">
+              <span>🎰 幸运转盘</span>
+            </div>
+            <div class="lottery-container">
+              <div class="wheel-pointer"></div>
+              <div class="wheel-wrapper">
+                <div class="wheel" id="wheel">
+                  ${lotteryPrizes.map((prize, index) => {
+                    const angle = (360 / lotteryPrizes.length) * index;
+                    return `<div class="prize-sector" style="transform: rotate(${angle}deg); background: ${prize.color};">${prize.name}</div>`;
+                  }).join('')}
+                </div>
+                <div class="wheel-center">GO</div>
+              </div>
+            </div>
+            <button class="lottery-btn" id="lotteryBtn" onclick="startLottery()"
+                    ${gameState.coins < lotteryPrices.normal ? 'disabled' : ''}>
+              🎰 抽奖一次 (${lotteryPrices.normal}金币)
+            </button>
+            <div class="lottery-info">奖励包括金币、加速道具、折扣券等</div>
           </div>
-          ${achievementsList}
         </div>
 
-        <button class="save-btn" onclick="showSaveInfo()">📁 存档信息</button>
-        <button class="save-btn" onclick="backupSave()">💾 备份存档</button>
-        <button class="reset-btn" onclick="resetGame()">重置游戏</button>
+        <!-- 成就标签 -->
+        <div class="tab-content" id="tab-achievement">
+          <div class="section">
+            <div class="title">
+              <span>🏆 成就系统 (${gameState.achievements.length}/${achievements.length})</span>
+            </div>
+            ${achievementsList}
+          </div>
+        </div>
+
+        <!-- 设置标签 -->
+        <div class="tab-content" id="tab-settings">
+          <div class="section">
+            <div class="title">
+              <span>⚙️ 游戏设置</span>
+            </div>
+            <button class="save-btn" onclick="showSaveInfo()">📁 存档信息</button>
+            <button class="save-btn" onclick="backupSave()">💾 备份存档</button>
+            <button class="reset-btn" onclick="resetGame()">重置游戏</button>
+          </div>
+        </div>
 
         <script>
           const vscode = acquireVsCodeApi();
+
+          // 接收来自扩展的消息
+          window.addEventListener('message', event => {
+            const message = event.data;
+            if (message.command === 'updateGameState') {
+              updateUI(message.data);
+            } else if (message.command === 'upgradeSuccess') {
+              handleUpgradeSuccess(message);
+            }
+          });
+
+          // 局部更新UI（不刷新整个页面）
+          function updateUI(data) {
+            // 更新金币显示
+            const coinsElement = document.querySelector('.coins');
+            if (coinsElement) {
+              coinsElement.textContent = '💰 ' + formatNumber(data.coins);
+            }
+
+            // 更新产出速率
+            const rateElement = document.querySelector('.rate');
+            if (rateElement) {
+              let boostText = '';
+              if (data.activeBoosts && data.activeBoosts.length > 0) {
+                const effectiveProduction = data.coinsPerSecond * data.activeBoosts[0].multiplier;
+                rateElement.textContent = '⚡ +' + formatNumber(effectiveProduction) + '/s 🚀' + data.activeBoosts[0].multiplier + 'x';
+              } else {
+                rateElement.textContent = '⚡ +' + formatNumber(data.coinsPerSecond) + '/s';
+              }
+            }
+
+            // 更新统计信息
+            const miniStats = document.querySelector('.mini-stats');
+            if (miniStats) {
+              const runTime = Math.floor((Date.now() - data.startTime) / 60000);
+              miniStats.innerHTML =
+                '<span>总: ' + formatNumber(data.totalCoinsEarned) + '</span>' +
+                '<span>成就: ' + data.achievements.length + '/${achievements.length}</span>' +
+                '<span>' + runTime + '分钟</span>';
+            }
+
+            // 更新升级按钮状态
+            if (data.upgrades) {
+              Object.entries(data.upgrades).forEach(([key, upgrade]) => {
+                const cost = Math.floor(upgrade.cost * Math.pow(1.15, upgrade.count));
+                const item = document.querySelector('[data-upgrade="' + key + '"]');
+                if (item) {
+                  // 更新是否可购买状态
+                  if (data.coins >= cost) {
+                    item.classList.add('ok');
+                    item.querySelector('.btn').disabled = false;
+                  } else {
+                    item.classList.remove('ok');
+                    item.querySelector('.btn').disabled = true;
+                  }
+                }
+              });
+            }
+
+            // 更新抽奖按钮
+            const lotteryBtn = document.getElementById('lotteryBtn');
+            if (lotteryBtn && !lotteryBtn.textContent.includes('抽奖中')) {
+              lotteryBtn.disabled = data.coins < ${lotteryPrices.normal};
+            }
+          }
+
+          // 处理升级成功的消息
+          function handleUpgradeSuccess(message) {
+            const item = document.querySelector('[data-upgrade="' + message.upgradeKey + '"]');
+            if (item) {
+              // 更新数量显示
+              const countElement = item.querySelector('.count');
+              if (countElement) {
+                countElement.textContent = '[' + message.newCount + ']';
+              }
+
+              // 更新产出显示
+              const detailElement = item.querySelector('.item-detail');
+              if (detailElement) {
+                detailElement.textContent = '+' + message.newProduction + '/s';
+              }
+            }
+          }
+
+          function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(2) + 'K';
+            return Math.floor(num).toString();
+          }
+
+          // 标签切换
+          function switchTab(tabName) {
+            // 移除所有active类
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            // 添加active类到选中的标签
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
+          }
 
           function clickCoin() {
             vscode.postMessage({ command: 'clickCoin' });
@@ -726,6 +1177,48 @@ class IdleGameViewProvider {
           function resetGame() {
             if (confirm('确定要重置游戏吗？所有进度将丢失！')) {
               vscode.postMessage({ command: 'resetGame' });
+            }
+          }
+
+          // 抽奖功能
+          let isSpinning = false;
+          function startLottery() {
+            if (isSpinning) return;
+            isSpinning = true;
+
+            const btn = document.getElementById('lotteryBtn');
+            const wheel = document.getElementById('wheel');
+
+            btn.disabled = true;
+            btn.textContent = '抽奖中...';
+
+            // 发送抽奖请求
+            vscode.postMessage({ command: 'lottery' });
+
+            // 转盘旋转动画
+            wheel.classList.add('spinning');
+
+            // 4秒后重置
+            setTimeout(() => {
+              wheel.classList.remove('spinning');
+              isSpinning = false;
+              btn.textContent = '🎰 抽奖一次 (' + ${lotteryPrices.normal} + '金币)';
+            }, 4000);
+          }
+
+          // 创建彩纸特效
+          function createConfetti() {
+            const colors = ['#f1c40f', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6'];
+            for (let i = 0; i < 50; i++) {
+              setTimeout(() => {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                document.body.appendChild(confetti);
+                setTimeout(() => confetti.remove(), 3000);
+              }, i * 30);
             }
           }
 
