@@ -1,0 +1,68 @@
+{
+  "name": "funny-vscode-extension",
+  "displayName": "有趣的VSCode扩展",
+  "description": "一个有趣的VSCode扩展",
+  "version": "0.0.1",
+  "publisher": "user",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "*"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "funny-vscode-extension.showJoke",
+        "title": "显示笑话"
+      },
+      {
+        "command": "funny-vscode-extension.showEmoji",
+        "title": "随机表情"
+      },
+      {
+        "command": "funny-vscode-extension.clickCoin",
+        "title": "点击获得金币"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "idleGameContainer",
+          "title": "挂机游戏",
+          "icon": "$(star-full)"
+        }
+      ]
+    },
+    "views": {
+      "idleGameContainer": [
+        {
+          "type": "webview",
+          "id": "idleGameView",
+          "name": "金币挂机"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "funny-vscode-extension.showJoke",
+        "key": "ctrl+alt+j",
+        "mac": "cmd+alt+j"
+      },
+      {
+        "command": "funny-vscode-extension.showEmoji",
+        "key": "ctrl+alt+e",
+        "mac": "cmd+alt+e"
+      },
+      {
+        "command": "funny-vscode-extension.clickCoin",
+        "key": "ctrl+alt+c",
+        "mac": "cmd+alt+c"
+      }
+    ]
+  }
+}

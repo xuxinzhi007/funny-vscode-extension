@@ -1,0 +1,36 @@
+{
+  "Console Log": {
+    "prefix": "clog",
+    "body": [
+      "console.log('${1:message}');"
+    ],
+    "description": "快速输出console.log"
+  },
+  "Fun Comment": {
+    "prefix": "funcom",
+    "body": [
+      "// 🎉 ${1:这段代码很神奇，请小心使用！} 🎉"
+    ],
+    "description": "有趣的代码注释"
+  },
+  "Try Catch": {
+    "prefix": "tryc",
+    "body": [
+      "try {",
+      "  ${1:// 尝试执行的代码}",
+      "} catch (error) {",
+      "  console.error('💥 出错了:', error);",
+      "}"
+    ],
+    "description": "带有表情的Try-Catch块"
+  },
+  "TypeScript Interface": {
+    "prefix": "intf",
+    "body": [
+      "interface ${1:InterfaceName} {",
+      "  ${2:propertyName}: ${3:propertyType}; // 👈 在这里定义属性",
+      "}"
+    ],
+    "description": "TypeScript接口模板"
+  }
+}
