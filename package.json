@@ -27,6 +27,21 @@
       {
         "command": "funny-vscode-extension.clickCoin",
         "title": "点击获得金币"
+      },
+      {
+        "command": "funny-vscode-extension.showSaveInfo",
+        "title": "查看存档信息",
+        "icon": "$(info)"
+      },
+      {
+        "command": "funny-vscode-extension.openSaveFolder",
+        "title": "打开存档文件夹",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "funny-vscode-extension.backupSave",
+        "title": "备份存档",
+        "icon": "$(archive)"
       }
     ],
     "viewsContainers": {
@@ -44,6 +59,39 @@
           "type": "webview",
           "id": "idleGameView",
           "name": "金币挂机"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "funny-vscode-extension.showSaveInfo",
+          "when": "view == idleGameView",
+          "group": "navigation"
+        },
+        {
+          "command": "funny-vscode-extension.openSaveFolder",
+          "when": "view == idleGameView",
+          "group": "1_save@1"
+        },
+        {
+          "command": "funny-vscode-extension.backupSave",
+          "when": "view == idleGameView",
+          "group": "1_save@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "funny-vscode-extension.showSaveInfo",
+          "when": "true"
+        },
+        {
+          "command": "funny-vscode-extension.openSaveFolder",
+          "when": "true"
+        },
+        {
+          "command": "funny-vscode-extension.backupSave",
+          "when": "true"
         }
       ]
     },

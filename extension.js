@@ -1,4 +1,6 @@
 const vscode = require('vscode');
+const fs = require('fs');
+const path = require('path');
 
 // 笑话库
 const jokes = [
@@ -67,14 +69,75 @@ function formatNumber(num) {
   return Math.floor(num).toString();
 }
 
+// ========== 文件存储功能 ==========
+
+function getSaveFilePath(context) {
+  // 使用VSCode的globalStorageUri，这是官方推荐的跨平台存储位置
+  const storageUri = context.globalStorageUri;
+  return path.join(storageUri.fsPath, 'game-save.json');
+}
+
+function ensureStorageDirectory(context) {
+  const storageUri = context.globalStorageUri;
+  if (!fs.existsSync(storageUri.fsPath)) {
+    fs.mkdirSync(storageUri.fsPath, { recursive: true });
+  }
+}
+
 function saveGameState(context) {
-  context.globalState.update('idleGameState', gameState);
+  try {
+    ensureStorageDirectory(context);
+    const saveFilePath = getSaveFilePath(context);
+    const saveData = {
+      ...gameState,
+      version: '1.0.0', // 版本号，方便将来数据迁移
+      savedAt: new Date().toISOString()
+    };
+    fs.writeFileSync(saveFilePath, JSON.stringify(saveData, null, 2), 'utf8');
+    console.log(`游戏数据已保存到: ${saveFilePath}`);
+  } catch (error) {
+    console.error('保存游戏数据失败:', error);
+    vscode.window.showErrorMessage(`保存游戏数据失败: ${error.message}`);
+  }
 }
 
 function loadGameState(context) {
-  const savedState = context.globalState.get('idleGameState');
-  if (savedState) {
+  try {
+    const saveFilePath = getSaveFilePath(context);
+
+    // 如果文件不存在，尝试从旧的globalState迁移
+    if (!fs.existsSync(saveFilePath)) {
+      console.log('存档文件不存在，尝试从globalState迁移数据...');
+      const oldSavedState = context.globalState.get('idleGameState');
+      if (oldSavedState) {
+        console.log('发现旧存档，正在迁移...');
+        gameState = { ...gameState, ...oldSavedState };
+        syncAchievements(); // 同步成就状态
+        saveGameState(context); // 保存到新位置
+        // 清除旧数据
+        context.globalState.update('idleGameState', undefined);
+        vscode.window.showInformationMessage('✅ 游戏数据已迁移到文件存储！');
+      } else {
+        console.log('未找到存档，使用默认数据');
+      }
+      return;
+    }
+
+    // 读取文件
+    const fileContent = fs.readFileSync(saveFilePath, 'utf8');
+    const savedState = JSON.parse(fileContent);
+
+    // 数据验证
+    if (!savedState || typeof savedState.coins !== 'number') {
+      throw new Error('存档数据格式错误');
+    }
+
+    // 恢复游戏状态
     gameState = { ...gameState, ...savedState };
+
+    // 同步成就解锁状态（防止重复弹窗）
+    syncAchievements();
+
     // 计算离线收益
     if (savedState.lastSaveTime) {
       const offlineTime = Math.min(Date.now() - savedState.lastSaveTime, 3600000); // 最多1小时
@@ -85,6 +148,108 @@ function loadGameState(context) {
         vscode.window.showInformationMessage(`💰 离线收益: +${formatNumber(offlineCoins)} 金币！`);
       }
     }
+
+    console.log(`游戏数据已从文件加载: ${saveFilePath}`);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      console.log('存档文件不存在，使用默认数据');
+    } else {
+      console.error('读取游戏数据失败:', error);
+      vscode.window.showErrorMessage(`读取游戏数据失败: ${error.message}`);
+    }
+  }
+}
+
+// 同步成就状态（从gameState.achievements恢复到achievements数组）
+function syncAchievements() {
+  if (gameState.achievements && gameState.achievements.length > 0) {
+    achievements.forEach(achievement => {
+      if (gameState.achievements.includes(achievement.id)) {
+        achievement.unlocked = true;
+      }
+    });
+    console.log(`已同步 ${gameState.achievements.length} 个成就状态`);
+  }
+}
+
+// 打开存档文件夹
+function openSaveFolder(context) {
+  try {
+    const saveFilePath = getSaveFilePath(context);
+    const folderPath = path.dirname(saveFilePath);
+
+    // 确保文件夹存在
+    ensureStorageDirectory(context);
+
+    vscode.env.openExternal(vscode.Uri.file(folderPath));
+    vscode.window.showInformationMessage(`📁 存档文件夹已打开\n路径: ${folderPath}`);
+  } catch (error) {
+    vscode.window.showErrorMessage(`打开文件夹失败: ${error.message}`);
+  }
+}
+
+// 导出存档信息
+function showSaveInfo(context) {
+  try {
+    const saveFilePath = getSaveFilePath(context);
+
+    if (!fs.existsSync(saveFilePath)) {
+      vscode.window.showWarningMessage('暂无存档文件');
+      return;
+    }
+
+    const stats = fs.statSync(saveFilePath);
+    const fileSize = (stats.size / 1024).toFixed(2);
+    const modifiedTime = new Date(stats.mtime).toLocaleString('zh-CN');
+
+    vscode.window.showInformationMessage(
+      `📁 存档信息\n` +
+      `位置: ${saveFilePath}\n` +
+      `大小: ${fileSize} KB\n` +
+      `修改时间: ${modifiedTime}`,
+      '打开文件夹',
+      '复制路径',
+      '备份存档'
+    ).then(selection => {
+      if (selection === '打开文件夹') {
+        openSaveFolder(context);
+      } else if (selection === '复制路径') {
+        vscode.env.clipboard.writeText(saveFilePath);
+        vscode.window.showInformationMessage('✅ 路径已复制到剪贴板');
+      } else if (selection === '备份存档') {
+        backupGameSave(context);
+      }
+    });
+  } catch (error) {
+    vscode.window.showErrorMessage(`获取存档信息失败: ${error.message}`);
+  }
+}
+
+// 备份存档
+function backupGameSave(context) {
+  try {
+    const saveFilePath = getSaveFilePath(context);
+    if (!fs.existsSync(saveFilePath)) {
+      vscode.window.showWarningMessage('没有找到存档文件');
+      return;
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const backupFileName = `game-save-backup-${timestamp}.json`;
+    const backupFilePath = path.join(path.dirname(saveFilePath), backupFileName);
+
+    fs.copyFileSync(saveFilePath, backupFilePath);
+
+    vscode.window.showInformationMessage(
+      `✅ 备份成功！\n${backupFileName}`,
+      '打开文件夹'
+    ).then(selection => {
+      if (selection === '打开文件夹') {
+        openSaveFolder(context);
+      }
+    });
+  } catch (error) {
+    vscode.window.showErrorMessage(`备份失败: ${error.message}`);
   }
 }
 
@@ -155,6 +320,19 @@ function activate(context) {
     vscode.window.showInformationMessage(`💰 +1 金币！当前: ${formatNumber(gameState.coins)}`);
   });
 
+  // 注册存档管理命令
+  let showSaveInfoCommand = vscode.commands.registerCommand('funny-vscode-extension.showSaveInfo', function () {
+    showSaveInfo(context);
+  });
+
+  let openSaveFolderCommand = vscode.commands.registerCommand('funny-vscode-extension.openSaveFolder', function () {
+    openSaveFolder(context);
+  });
+
+  let backupSaveCommand = vscode.commands.registerCommand('funny-vscode-extension.backupSave', function () {
+    backupGameSave(context);
+  });
+
   // 每秒增加金币定时器
   const coinTimer = setInterval(() => {
     gameState.coinsPerSecond = calculateCoinsPerSecond();
@@ -181,6 +359,9 @@ function activate(context) {
   context.subscriptions.push(showEmojiCommand);
   context.subscriptions.push(openSidebarCommand);
   context.subscriptions.push(clickCoinCommand);
+  context.subscriptions.push(showSaveInfoCommand);
+  context.subscriptions.push(openSaveFolderCommand);
+  context.subscriptions.push(backupSaveCommand);
   context.subscriptions.push(jokeStatusBarItem);
   context.subscriptions.push(coinStatusBarItem);
   context.subscriptions.push({ dispose: () => clearInterval(coinTimer) });
@@ -228,6 +409,14 @@ class IdleGameViewProvider {
                 saveGameState(this._context);
               }
             }
+            break;
+
+          case 'showSaveInfo':
+            showSaveInfo(this._context);
+            break;
+
+          case 'backupSave':
+            backupGameSave(this._context);
             break;
 
           case 'resetGame':
@@ -446,6 +635,22 @@ class IdleGameViewProvider {
             margin-top: 10px;
           }
 
+          /* 存档管理按钮 */
+          .save-btn {
+            width: 100%;
+            background: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            border: none;
+            padding: 6px;
+            font-size: 10px;
+            cursor: pointer;
+            border-radius: 3px;
+            margin-top: 6px;
+          }
+          .save-btn:hover {
+            background: var(--vscode-button-secondaryHoverBackground);
+          }
+
           /* 响应式：窄屏模式 */
           @media (max-width: 250px) {
             body { padding: 4px; }
@@ -499,6 +704,8 @@ class IdleGameViewProvider {
           ${achievementsList}
         </div>
 
+        <button class="save-btn" onclick="showSaveInfo()">📁 存档信息</button>
+        <button class="save-btn" onclick="backupSave()">💾 备份存档</button>
         <button class="reset-btn" onclick="resetGame()">重置游戏</button>
 
         <script>
@@ -506,6 +713,14 @@ class IdleGameViewProvider {
 
           function clickCoin() {
             vscode.postMessage({ command: 'clickCoin' });
+          }
+
+          function showSaveInfo() {
+            vscode.postMessage({ command: 'showSaveInfo' });
+          }
+
+          function backupSave() {
+            vscode.postMessage({ command: 'backupSave' });
           }
 
           function resetGame() {
