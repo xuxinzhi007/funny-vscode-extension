@@ -126,6 +126,16 @@
           "minimum": 50,
           "maximum": 300,
           "description": "波纹特效的大小（像素）"
+        },
+        "funny-vscode-extension.enableCodeEffect": {
+          "type": "boolean",
+          "default": false,
+          "description": "启用编码特效（金币粒子+关键词爆炸）"
+        },
+        "funny-vscode-extension.enableKeywordEffect": {
+          "type": "boolean",
+          "default": true,
+          "description": "启用关键词特殊特效（在编码特效启用时生效）"
         }
       }
     }

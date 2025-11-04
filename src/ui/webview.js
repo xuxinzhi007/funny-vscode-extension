@@ -41,6 +41,24 @@ class IdleGameViewProvider {
           });
         }
       }
+      if (e.affectsConfiguration('funny-vscode-extension.enableCodeEffect')) {
+        const codeEffectEnabled = vscode.workspace.getConfiguration('funny-vscode-extension').get('enableCodeEffect', false);
+        if (this._view) {
+          this._view.webview.postMessage({
+            command: 'configChanged',
+            codeEffectEnabled: codeEffectEnabled
+          });
+        }
+      }
+      if (e.affectsConfiguration('funny-vscode-extension.enableKeywordEffect')) {
+        const keywordEffectEnabled = vscode.workspace.getConfiguration('funny-vscode-extension').get('enableKeywordEffect', true);
+        if (this._view) {
+          this._view.webview.postMessage({
+            command: 'configChanged',
+            keywordEffectEnabled: keywordEffectEnabled
+          });
+        }
+      }
     });
 
     // 监听消息
@@ -122,6 +140,22 @@ class IdleGameViewProvider {
             const sizeConfig = vscode.workspace.getConfiguration('funny-vscode-extension');
             sizeConfig.update('rippleSize', message.size, true);
             break;
+
+          case 'toggleCodeEffect':
+            const codeConfig = vscode.workspace.getConfiguration('funny-vscode-extension');
+            const currentCodeValue = codeConfig.get('enableCodeEffect', false);
+            codeConfig.update('enableCodeEffect', !currentCodeValue, true).then(() => {
+              vscode.window.showInformationMessage(`💥 编码特效已${!currentCodeValue ? '启用' : '禁用'}`);
+            });
+            break;
+
+          case 'toggleKeywordEffect':
+            const keywordConfig = vscode.workspace.getConfiguration('funny-vscode-extension');
+            const currentKeywordValue = keywordConfig.get('enableKeywordEffect', true);
+            keywordConfig.update('enableKeywordEffect', !currentKeywordValue, true).then(() => {
+              vscode.window.showInformationMessage(`💥 关键词特效已${!currentKeywordValue ? '启用' : '禁用'}`);
+            });
+            break;
         }
       }
     );
@@ -166,6 +200,10 @@ class IdleGameViewProvider {
     // 读取波纹特效配置
     const rippleEnabled = vscode.workspace.getConfiguration('funny-vscode-extension').get('enableRippleEffect', false);
     const rippleSize = vscode.workspace.getConfiguration('funny-vscode-extension').get('rippleSize', 100);
+
+    // 读取编码特效配置
+    const codeEffectEnabled = vscode.workspace.getConfiguration('funny-vscode-extension').get('enableCodeEffect', false);
+    const keywordEffectEnabled = vscode.workspace.getConfiguration('funny-vscode-extension').get('enableKeywordEffect', true);
 
     const upgradesList = Object.entries(gameState.upgrades).map(([key, upgrade]) => {
       const nextCost = Math.floor(upgrade.cost * Math.pow(1.15, upgrade.count));
@@ -584,6 +622,117 @@ class IdleGameViewProvider {
             padding: 8px;
             margin-top: 8px;
           }
+
+          /* 设置按钮样式 */
+          .settings-icon {
+            font-size: 16px;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.2s, transform 0.2s;
+            user-select: none;
+          }
+          .settings-icon:hover {
+            opacity: 1;
+            transform: rotate(30deg);
+          }
+
+          /* 配置面板样式 - 覆盖式 */
+          .config-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--vscode-editor-background);
+            z-index: 1000;
+            display: none;
+            overflow-y: auto;
+            padding: 16px;
+          }
+          .config-panel.visible {
+            display: block;
+            animation: slideIn 0.2s ease-out;
+          }
+          @keyframes slideIn {
+            from {
+              opacity: 0;
+              transform: translateY(10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          .config-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--vscode-panel-border);
+          }
+          .config-title {
+            font-size: 14px;
+            font-weight: bold;
+          }
+          .close-btn {
+            font-size: 20px;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            user-select: none;
+            line-height: 1;
+          }
+          .close-btn:hover {
+            opacity: 1;
+          }
+          .config-category {
+            margin-bottom: 14px;
+            padding: 10px;
+            background: var(--vscode-input-background);
+            border-radius: 4px;
+            border-left: 3px solid var(--vscode-focusBorder);
+          }
+          .config-category-title {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+          .config-keywords {
+            font-size: 10px;
+            opacity: 0.8;
+            line-height: 1.8;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+          }
+          .keyword-tag {
+            background: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-family: monospace;
+            transition: transform 0.1s;
+          }
+          .keyword-tag:hover {
+            transform: scale(1.05);
+          }
+          .config-toggle {
+            font-size: 10px;
+            padding: 3px 8px;
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-left: auto;
+          }
+          .config-toggle:hover {
+            background: var(--vscode-button-hoverBackground);
+          }
           .slider-label {
             font-size: 10px;
             margin-bottom: 6px;
@@ -722,6 +871,123 @@ class IdleGameViewProvider {
               </div>
               <input type="range" min="50" max="300" value="${rippleSize}" class="slider" id="sizeSlider" oninput="updateRippleSize(event, this.value)">
             </div>
+            <div class="item" style="margin-top: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div class="item-name">💥 编码特效</div>
+                <span class="settings-icon" onclick="toggleConfigPanel(event)" title="配置">⚙️</span>
+              </div>
+              <div class="item-detail">金币粒子 + 关键词爆炸特效（func、class等）</div>
+              <button class="btn" id="codeEffectToggleBtn" onclick="toggleCodeEffect()">
+                ${codeEffectEnabled ? '✅ 已启用' : '❌ 已禁用'}
+              </button>
+            </div>
+            <div class="config-panel" id="codeEffectConfig">
+              <div class="config-header">
+                <div class="config-title">💥 编码特效配置</div>
+                <span class="close-btn" onclick="toggleConfigPanel(event)" title="关闭">✕</span>
+              </div>
+
+              <div style="font-size: 11px; margin-bottom: 16px; padding: 10px; background: var(--vscode-input-background); border-radius: 4px;">
+                <strong>✨ 当前状态</strong>
+                <div style="margin-top: 6px; opacity: 0.8;">关键词特效: ${keywordEffectEnabled ? '✅ 启用' : '❌ 禁用'}</div>
+              </div>
+
+              <div class="config-category">
+                <div class="config-category-title">
+                  <span>💥 函数关键词</span>
+                  <span style="opacity: 0.6;">- 爆炸特效</span>
+                </div>
+                <div class="config-keywords">
+                  <span class="keyword-tag">function</span>
+                  <span class="keyword-tag">func</span>
+                  <span class="keyword-tag">def</span>
+                  <span class="keyword-tag">fn</span>
+                  <span class="keyword-tag">async</span>
+                  <span class="keyword-tag">await</span>
+                </div>
+              </div>
+
+              <div class="config-category">
+                <div class="config-category-title">
+                  <span>💎 类关键词</span>
+                  <span style="opacity: 0.6;">- 钻石特效</span>
+                </div>
+                <div class="config-keywords">
+                  <span class="keyword-tag">class</span>
+                  <span class="keyword-tag">interface</span>
+                  <span class="keyword-tag">struct</span>
+                  <span class="keyword-tag">enum</span>
+                  <span class="keyword-tag">type</span>
+                </div>
+              </div>
+
+              <div class="config-category">
+                <div class="config-category-title">
+                  <span>🔄 循环关键词</span>
+                  <span style="opacity: 0.6;">- 旋转特效</span>
+                </div>
+                <div class="config-keywords">
+                  <span class="keyword-tag">for</span>
+                  <span class="keyword-tag">while</span>
+                  <span class="keyword-tag">loop</span>
+                  <span class="keyword-tag">foreach</span>
+                  <span class="keyword-tag">map</span>
+                  <span class="keyword-tag">filter</span>
+                </div>
+              </div>
+
+              <div class="config-category">
+                <div class="config-category-title">
+                  <span>❓ 条件关键词</span>
+                  <span style="opacity: 0.6;">- 问号特效</span>
+                </div>
+                <div class="config-keywords">
+                  <span class="keyword-tag">if</span>
+                  <span class="keyword-tag">else</span>
+                  <span class="keyword-tag">switch</span>
+                  <span class="keyword-tag">case</span>
+                  <span class="keyword-tag">when</span>
+                  <span class="keyword-tag">match</span>
+                </div>
+              </div>
+
+              <div class="config-category">
+                <div class="config-category-title">
+                  <span>📦 变量关键词</span>
+                  <span style="opacity: 0.6;">- 盒子特效</span>
+                </div>
+                <div class="config-keywords">
+                  <span class="keyword-tag">const</span>
+                  <span class="keyword-tag">let</span>
+                  <span class="keyword-tag">var</span>
+                  <span class="keyword-tag">val</span>
+                </div>
+              </div>
+
+              <div class="config-category">
+                <div class="config-category-title">
+                  <span>↩️ 返回关键词</span>
+                  <span style="opacity: 0.6;">- 箭头特效</span>
+                </div>
+                <div class="config-keywords">
+                  <span class="keyword-tag">return</span>
+                  <span class="keyword-tag">yield</span>
+                  <span class="keyword-tag">break</span>
+                  <span class="keyword-tag">continue</span>
+                </div>
+              </div>
+
+              <button class="btn" style="width: 100%; margin-top: 16px; padding: 10px; font-size: 12px;" onclick="toggleKeywordEffect()">
+                ${keywordEffectEnabled ? '❌ 禁用关键词特效' : '✅ 启用关键词特效'}
+              </button>
+
+              <div style="margin-top: 16px; padding: 10px; background: var(--vscode-input-background); border-radius: 4px; font-size: 10px; opacity: 0.7;">
+                <strong>💡 提示</strong>
+                <div style="margin-top: 4px;">• 输入关键词时会触发文字破碎和符号爆炸特效</div>
+                <div>• 普通文字输入显示金币粒子特效</div>
+                <div>• 支持多种编程语言的关键词</div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -729,6 +995,8 @@ class IdleGameViewProvider {
           const vscode = acquireVsCodeApi();
           let RIPPLE_ENABLED = ${rippleEnabled};
           let RIPPLE_SIZE = ${rippleSize};
+          let CODE_EFFECT_ENABLED = ${codeEffectEnabled};
+          let KEYWORD_EFFECT_ENABLED = ${keywordEffectEnabled};
 
           // 接收来自扩展的消息
           window.addEventListener('message', event => {
@@ -857,6 +1125,22 @@ class IdleGameViewProvider {
             vscode.postMessage({ command: 'toggleRipple' });
           }
 
+          function toggleCodeEffect() {
+            vscode.postMessage({ command: 'toggleCodeEffect' });
+          }
+
+          function toggleKeywordEffect() {
+            vscode.postMessage({ command: 'toggleKeywordEffect' });
+          }
+
+          function toggleConfigPanel(event) {
+            event.stopPropagation();
+            const panel = document.getElementById('codeEffectConfig');
+            if (panel) {
+              panel.classList.toggle('visible');
+            }
+          }
+
           function updateRippleSize(event, value) {
             // 阻止事件冒泡
             event.stopPropagation();
@@ -899,6 +1183,38 @@ class IdleGameViewProvider {
                 slider.value = RIPPLE_SIZE;
               }
             }
+
+            // 更新编码特效开关状态
+            if (message.codeEffectEnabled !== undefined) {
+              CODE_EFFECT_ENABLED = message.codeEffectEnabled;
+              const codeToggleBtn = document.getElementById('codeEffectToggleBtn');
+              if (codeToggleBtn) {
+                codeToggleBtn.textContent = CODE_EFFECT_ENABLED ? '✅ 已启用' : '❌ 已禁用';
+              }
+            }
+
+            // 更新关键词特效开关状态
+            if (message.keywordEffectEnabled !== undefined) {
+              KEYWORD_EFFECT_ENABLED = message.keywordEffectEnabled;
+              // 更新配置面板中的状态显示
+              updateConfigPanelStatus();
+            }
+          }
+
+          // 更新配置面板状态显示
+          function updateConfigPanelStatus() {
+            const statusDivs = document.querySelectorAll('#codeEffectConfig div');
+            statusDivs.forEach(div => {
+              if (div.textContent && div.textContent.includes('关键词特效:')) {
+                div.textContent = '关键词特效: ' + (KEYWORD_EFFECT_ENABLED ? '✅ 启用' : '❌ 禁用');
+              }
+            });
+            const toggleBtns = document.querySelectorAll('#codeEffectConfig .btn');
+            toggleBtns.forEach(btn => {
+              if (btn.textContent.includes('关键词特效')) {
+                btn.textContent = KEYWORD_EFFECT_ENABLED ? '❌ 禁用关键词特效' : '✅ 启用关键词特效';
+              }
+            });
           }
 
           // 抽奖功能

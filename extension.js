@@ -8,6 +8,7 @@ const { loadGameState, saveGameState, showSaveInfo, openSaveFolder, backupGameSa
 // 导入UI模块
 const IdleGameViewProvider = require('./src/ui/webview');
 const { createStatusBar, updateStatusBar } = require('./src/ui/statusBar');
+const { initCoinParticleEffect } = require('./src/ui/coinParticleEffect');
 
 // 笑话库
 const jokes = [
@@ -102,6 +103,9 @@ function activate(context) {
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider('idleGameView', idleGameViewProvider)
   );
+
+  // 初始化金币粒子特效
+  initCoinParticleEffect(context);
 
   // ========== 游戏循环定时器 ==========
 
