@@ -111,6 +111,16 @@
         "key": "ctrl+alt+c",
         "mac": "cmd+alt+c"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "有趣的VSCode扩展",
+      "properties": {
+        "funny-vscode-extension.enableRippleEffect": {
+          "type": "boolean",
+          "default": false,
+          "description": "启用鼠标点击波纹特效"
+        }
+      }
+    }
   }
 }

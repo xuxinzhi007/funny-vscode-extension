@@ -21,6 +21,13 @@ class IdleGameViewProvider {
 
     webviewView.webview.html = this._getHtmlContent();
 
+    // 监听配置变化
+    const configChangeListener = vscode.workspace.onDidChangeConfiguration(e => {
+      if (e.affectsConfiguration('funny-vscode-extension.enableRippleEffect')) {
+        this.refresh();
+      }
+    });
+
     // 监听消息
     webviewView.webview.onDidReceiveMessage(
       message => {
@@ -87,6 +94,14 @@ class IdleGameViewProvider {
             this.refresh();
             saveGameState(this._context);
             break;
+
+          case 'toggleRipple':
+            const config = vscode.workspace.getConfiguration('funny-vscode-extension');
+            const currentValue = config.get('enableRippleEffect', false);
+            config.update('enableRippleEffect', !currentValue, true).then(() => {
+              vscode.window.showInformationMessage(`波纹特效已${!currentValue ? '启用' : '禁用'}`);
+            });
+            break;
         }
       }
     );
@@ -112,6 +127,7 @@ class IdleGameViewProvider {
 
     webviewView.onDidDispose(() => {
       clearInterval(updateTimer);
+      configChangeListener.dispose();
     });
   }
 
@@ -126,6 +142,9 @@ class IdleGameViewProvider {
     const achievements = getAchievements();
     const lotteryPrizes = getLotteryPrizes();
     const lotteryPrices = getLotteryPrices();
+
+    // 读取波纹特效配置
+    const rippleEnabled = vscode.workspace.getConfiguration('funny-vscode-extension').get('enableRippleEffect', false);
 
     const upgradesList = Object.entries(gameState.upgrades).map(([key, upgrade]) => {
       const nextCost = Math.floor(upgrade.cost * Math.pow(1.15, upgrade.count));
@@ -505,6 +524,26 @@ class IdleGameViewProvider {
             .rate { font-size: 10px; }
             .click-btn { padding: 4px; font-size: 10px; }
           }
+
+          /* 波纹特效 */
+          .ripple {
+            position: fixed;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.6);
+            pointer-events: none;
+            animation: ripple-animation 0.6s ease-out;
+            z-index: 9999;
+          }
+          @keyframes ripple-animation {
+            from {
+              transform: scale(0);
+              opacity: 1;
+            }
+            to {
+              transform: scale(1);
+              opacity: 0;
+            }
+          }
         </style>
       </head>
       <body>
@@ -587,10 +626,23 @@ class IdleGameViewProvider {
             <button class="save-btn" onclick="backupSave()">💾 备份存档</button>
             <button class="reset-btn" onclick="resetGame()">重置游戏</button>
           </div>
+          <div class="section">
+            <div class="title">
+              <span>🎨 视觉特效</span>
+            </div>
+            <div class="item">
+              <div class="item-name">波纹特效</div>
+              <div class="item-detail">点击时显示彩色波纹动画</div>
+              <button class="btn" id="rippleToggleBtn" onclick="toggleRipple()">
+                ${rippleEnabled ? '✅ 已启用' : '❌ 已禁用'}
+              </button>
+            </div>
+          </div>
         </div>
 
         <script>
           const vscode = acquireVsCodeApi();
+          const RIPPLE_ENABLED = ${rippleEnabled};
 
           // 接收来自扩展的消息
           window.addEventListener('message', event => {
@@ -710,6 +762,10 @@ class IdleGameViewProvider {
             }
           }
 
+          function toggleRipple() {
+            vscode.postMessage({ command: 'toggleRipple' });
+          }
+
           // 抽奖功能
           let isSpinning = false;
           function startLottery() {
@@ -761,6 +817,43 @@ class IdleGameViewProvider {
               }
             }
           });
+
+          // 波纹特效功能
+          function createRipple(event) {
+            if (!RIPPLE_ENABLED) return;
+
+            const ripple = document.createElement('div');
+            ripple.className = 'ripple';
+
+            // 设置波纹的位置和大小
+            const size = Math.max(100, Math.random() * 150 + 50);
+            ripple.style.width = size + 'px';
+            ripple.style.height = size + 'px';
+            ripple.style.left = (event.clientX - size / 2) + 'px';
+            ripple.style.top = (event.clientY - size / 2) + 'px';
+
+            // 随机颜色
+            const colors = [
+              'rgba(255, 215, 0, 0.6)',
+              'rgba(124, 252, 0, 0.6)',
+              'rgba(0, 191, 255, 0.6)',
+              'rgba(255, 105, 180, 0.6)',
+              'rgba(138, 43, 226, 0.6)'
+            ];
+            ripple.style.background = colors[Math.floor(Math.random() * colors.length)];
+
+            document.body.appendChild(ripple);
+
+            // 动画结束后移除元素
+            setTimeout(() => {
+              ripple.remove();
+            }, 600);
+          }
+
+          // 添加全局点击监听器
+          if (RIPPLE_ENABLED) {
+            document.addEventListener('click', createRipple);
+          }
         </script>
       </body>
       </html>
