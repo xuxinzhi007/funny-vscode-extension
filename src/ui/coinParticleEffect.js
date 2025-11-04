@@ -1,45 +1,11 @@
 // 敲代码爆金币粒子效果模块
 const vscode = require('vscode');
 
-// 关键词特效映射
-const KEYWORD_EFFECTS = {
-  // 函数关键词 - 爆炸效果
-  functions: {
-    keywords: ['function', 'func', 'def', 'fn', 'async', 'await'],
-    effect: 'explosion',
-    symbols: ['💥', '🔥', '⚡', '✨']
-  },
-  // 类关键词 - 钻石效果
-  classes: {
-    keywords: ['class', 'interface', 'struct', 'enum', 'type'],
-    effect: 'diamond',
-    symbols: ['💎', '👑', '🌟', '⭐']
-  },
-  // 循环关键词 - 旋转效果
-  loops: {
-    keywords: ['for', 'while', 'loop', 'foreach', 'map', 'filter'],
-    effect: 'spin',
-    symbols: ['🔄', '♻️', '🌀', '⚙️']
-  },
-  // 条件关键词 - 问号效果
-  conditions: {
-    keywords: ['if', 'else', 'switch', 'case', 'when', 'match'],
-    effect: 'question',
-    symbols: ['❓', '❗', '⚠️', '🎯']
-  },
-  // 变量关键词 - 盒子效果
-  variables: {
-    keywords: ['const', 'let', 'var', 'val'],
-    effect: 'box',
-    symbols: ['📦', '🎁', '📫', '🗃️']
-  },
-  // 返回关键词 - 箭头效果
-  returns: {
-    keywords: ['return', 'yield', 'break', 'continue'],
-    effect: 'arrow',
-    symbols: ['↩️', '⬅️', '🔙', '↪️']
-  }
-};
+// 获取关键词配置
+function getKeywordConfig() {
+  const config = vscode.workspace.getConfiguration('funny-vscode-extension');
+  return config.get('keywordCategories', {});
+}
 
 /**
  * 初始化金币粒子效果
@@ -49,7 +15,6 @@ function initCoinParticleEffect(context) {
   const textChangeListener = vscode.workspace.onDidChangeTextDocument(event => {
     const config = vscode.workspace.getConfiguration('funny-vscode-extension');
     const codeEffectEnabled = config.get('enableCodeEffect', false);
-    const keywordEffectEnabled = config.get('enableKeywordEffect', true);
 
     if (!codeEffectEnabled || !event.contentChanges.length) {
       return;
@@ -66,12 +31,10 @@ function initCoinParticleEffect(context) {
         const position = change.range.start;
 
         // 检测关键词特效
-        if (keywordEffectEnabled) {
-          const detectedKeyword = detectKeyword(editor, position, change.text);
-          if (detectedKeyword) {
-            triggerKeywordEffect(editor, position, detectedKeyword);
-            return; // 触发关键词特效后，不再显示普通金币
-          }
+        const detectedKeyword = detectKeyword(editor, position, change.text);
+        if (detectedKeyword) {
+          triggerKeywordEffect(editor, position, detectedKeyword);
+          return; // 触发关键词特效后，不再显示普通金币
         }
 
         // 普通金币效果
@@ -91,9 +54,17 @@ function detectKeyword(editor, position, text) {
   const line = editor.document.lineAt(position.line);
   const lineText = line.text.substring(0, position.character + text.length);
 
+  // 获取用户配置的关键词类别
+  const keywordCategories = getKeywordConfig();
+
   // 检查每个关键词类别
-  for (const [category, config] of Object.entries(KEYWORD_EFFECTS)) {
-    for (const keyword of config.keywords) {
+  for (const [category, config] of Object.entries(keywordCategories)) {
+    // 跳过未启用的类别
+    if (!config.enabled) {
+      continue;
+    }
+
+    for (const keyword of config.keywords || []) {
       // 检查是否刚好输入完这个关键词
       const regex = new RegExp(`\\b${keyword}\\b$`, 'i');
       if (regex.test(lineText)) {

@@ -130,12 +130,43 @@
         "funny-vscode-extension.enableCodeEffect": {
           "type": "boolean",
           "default": false,
-          "description": "启用编码特效（金币粒子+关键词爆炸）"
+          "description": "启用编码特效（金币粒子特效）"
         },
-        "funny-vscode-extension.enableKeywordEffect": {
-          "type": "boolean",
-          "default": true,
-          "description": "启用关键词特殊特效（在编码特效启用时生效）"
+        "funny-vscode-extension.keywordCategories": {
+          "type": "object",
+          "default": {
+            "functions": {
+              "enabled": true,
+              "keywords": ["function", "func", "def", "fn", "async", "await"],
+              "symbols": ["💥", "🔥", "⚡", "✨"]
+            },
+            "classes": {
+              "enabled": true,
+              "keywords": ["class", "interface", "struct", "enum", "type"],
+              "symbols": ["💎", "👑", "🌟", "⭐"]
+            },
+            "loops": {
+              "enabled": true,
+              "keywords": ["for", "while", "loop", "foreach", "map", "filter"],
+              "symbols": ["🔄", "♻️", "🌀", "⚙️"]
+            },
+            "conditions": {
+              "enabled": true,
+              "keywords": ["if", "else", "switch", "case", "when", "match"],
+              "symbols": ["❓", "❗", "⚠️", "🎯"]
+            },
+            "variables": {
+              "enabled": true,
+              "keywords": ["const", "let", "var", "val"],
+              "symbols": ["📦", "🎁", "📫", "🗃️"]
+            },
+            "returns": {
+              "enabled": true,
+              "keywords": ["return", "yield", "break", "continue"],
+              "symbols": ["↩️", "⬅️", "🔙", "↪️"]
+            }
+          },
+          "description": "关键词类别配置"
         }
       }
     }

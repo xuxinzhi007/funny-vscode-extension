@@ -149,12 +149,25 @@ class IdleGameViewProvider {
             });
             break;
 
-          case 'toggleKeywordEffect':
-            const keywordConfig = vscode.workspace.getConfiguration('funny-vscode-extension');
-            const currentKeywordValue = keywordConfig.get('enableKeywordEffect', true);
-            keywordConfig.update('enableKeywordEffect', !currentKeywordValue, true).then(() => {
-              vscode.window.showInformationMessage(`💥 关键词特效已${!currentKeywordValue ? '启用' : '禁用'}`);
-            });
+          case 'toggleCategory':
+            // 切换特定类别的启用状态
+            const categoryConfig = vscode.workspace.getConfiguration('funny-vscode-extension');
+            const categories = categoryConfig.get('keywordCategories', {});
+            const category = message.category;
+
+            if (categories[category]) {
+              categories[category].enabled = !categories[category].enabled;
+              categoryConfig.update('keywordCategories', categories, true).then(() => {
+                const statusText = categories[category].enabled ? '启用' : '禁用';
+                vscode.window.showInformationMessage(`✨ ${category} 特效已${statusText}`);
+                this.refresh(); // 刷新UI以显示新状态
+              });
+            }
+            break;
+
+          case 'editCategory':
+            // 打开编辑对话框
+            this._editCategoryDialog(message.category);
             break;
         }
       }
@@ -191,6 +204,75 @@ class IdleGameViewProvider {
     }
   }
 
+  /**
+   * 编辑类别配置的对话框
+   */
+  async _editCategoryDialog(category) {
+    const config = vscode.workspace.getConfiguration('funny-vscode-extension');
+    const categories = config.get('keywordCategories', {});
+
+    if (!categories[category]) {
+      vscode.window.showErrorMessage(`类别 ${category} 不存在`);
+      return;
+    }
+
+    const categoryData = categories[category];
+    const categoryNames = {
+      'functions': '函数',
+      'classes': '类',
+      'loops': '循环',
+      'conditions': '条件',
+      'variables': '变量',
+      'returns': '返回'
+    };
+
+    // 步骤1: 编辑关键词
+    const keywordsStr = categoryData.keywords.join(', ');
+    const newKeywords = await vscode.window.showInputBox({
+      prompt: `编辑【${categoryNames[category] || category}】的关键词（用逗号分隔）`,
+      value: keywordsStr,
+      placeHolder: '例如: function, func, def'
+    });
+
+    if (newKeywords === undefined) {
+      return; // 用户取消
+    }
+
+    // 步骤2: 编辑符号
+    const symbolsStr = categoryData.symbols.join(', ');
+    const newSymbols = await vscode.window.showInputBox({
+      prompt: `编辑【${categoryNames[category] || category}】的特效符号（用逗号分隔）`,
+      value: symbolsStr,
+      placeHolder: '例如: 💥, 🔥, ⚡, ✨'
+    });
+
+    if (newSymbols === undefined) {
+      return; // 用户取消
+    }
+
+    // 更新配置
+    const updatedKeywords = newKeywords.split(',').map(k => k.trim()).filter(k => k.length > 0);
+    const updatedSymbols = newSymbols.split(',').map(s => s.trim()).filter(s => s.length > 0);
+
+    if (updatedKeywords.length === 0) {
+      vscode.window.showWarningMessage('关键词不能为空！');
+      return;
+    }
+
+    if (updatedSymbols.length === 0) {
+      vscode.window.showWarningMessage('符号不能为空！');
+      return;
+    }
+
+    // 更新配置
+    categories[category].keywords = updatedKeywords;
+    categories[category].symbols = updatedSymbols;
+
+    await config.update('keywordCategories', categories, true);
+    vscode.window.showInformationMessage(`✅ 已更新【${categoryNames[category] || category}】配置`);
+    this.refresh(); // 刷新UI
+  }
+
   _getHtmlContent() {
     const gameState = getGameState();
     const achievements = getAchievements();
@@ -203,7 +285,7 @@ class IdleGameViewProvider {
 
     // 读取编码特效配置
     const codeEffectEnabled = vscode.workspace.getConfiguration('funny-vscode-extension').get('enableCodeEffect', false);
-    const keywordEffectEnabled = vscode.workspace.getConfiguration('funny-vscode-extension').get('enableKeywordEffect', true);
+    const keywordCategories = vscode.workspace.getConfiguration('funny-vscode-extension').get('keywordCategories', {});
 
     const upgradesList = Object.entries(gameState.upgrades).map(([key, upgrade]) => {
       const nextCost = Math.floor(upgrade.cost * Math.pow(1.15, upgrade.count));
@@ -733,6 +815,41 @@ class IdleGameViewProvider {
           .config-toggle:hover {
             background: var(--vscode-button-hoverBackground);
           }
+          .category-controls {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            margin-top: 8px;
+          }
+          .toggle-switch {
+            font-size: 9px;
+            padding: 4px 10px;
+            background: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+          .toggle-switch.enabled {
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+          }
+          .toggle-switch:hover {
+            opacity: 0.8;
+          }
+          .edit-btn {
+            font-size: 9px;
+            padding: 4px 10px;
+            background: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+          }
+          .edit-btn:hover {
+            background: var(--vscode-button-secondaryHoverBackground);
+          }
           .slider-label {
             font-size: 10px;
             margin-bottom: 6px;
@@ -888,104 +1005,52 @@ class IdleGameViewProvider {
               </div>
 
               <div style="font-size: 11px; margin-bottom: 16px; padding: 10px; background: var(--vscode-input-background); border-radius: 4px;">
-                <strong>✨ 当前状态</strong>
-                <div style="margin-top: 6px; opacity: 0.8;">关键词特效: ${keywordEffectEnabled ? '✅ 启用' : '❌ 禁用'}</div>
+                <strong>✨ 关键词特效</strong>
+                <div style="margin-top: 6px; opacity: 0.8;">每个类别都可以独立开启/关闭和自定义</div>
               </div>
 
-              <div class="config-category">
-                <div class="config-category-title">
-                  <span>💥 函数关键词</span>
-                  <span style="opacity: 0.6;">- 爆炸特效</span>
-                </div>
-                <div class="config-keywords">
-                  <span class="keyword-tag">function</span>
-                  <span class="keyword-tag">func</span>
-                  <span class="keyword-tag">def</span>
-                  <span class="keyword-tag">fn</span>
-                  <span class="keyword-tag">async</span>
-                  <span class="keyword-tag">await</span>
-                </div>
-              </div>
+              ${Object.entries(keywordCategories).map(([category, config]) => {
+                const categoryNames = {
+                  functions: '💥 函数关键词',
+                  classes: '💎 类关键词',
+                  loops: '🔄 循环关键词',
+                  conditions: '❓ 条件关键词',
+                  variables: '📦 变量关键词',
+                  returns: '↩️ 返回关键词'
+                };
+                const categoryName = categoryNames[category] || category;
 
-              <div class="config-category">
-                <div class="config-category-title">
-                  <span>💎 类关键词</span>
-                  <span style="opacity: 0.6;">- 钻石特效</span>
-                </div>
-                <div class="config-keywords">
-                  <span class="keyword-tag">class</span>
-                  <span class="keyword-tag">interface</span>
-                  <span class="keyword-tag">struct</span>
-                  <span class="keyword-tag">enum</span>
-                  <span class="keyword-tag">type</span>
-                </div>
-              </div>
-
-              <div class="config-category">
-                <div class="config-category-title">
-                  <span>🔄 循环关键词</span>
-                  <span style="opacity: 0.6;">- 旋转特效</span>
-                </div>
-                <div class="config-keywords">
-                  <span class="keyword-tag">for</span>
-                  <span class="keyword-tag">while</span>
-                  <span class="keyword-tag">loop</span>
-                  <span class="keyword-tag">foreach</span>
-                  <span class="keyword-tag">map</span>
-                  <span class="keyword-tag">filter</span>
-                </div>
-              </div>
-
-              <div class="config-category">
-                <div class="config-category-title">
-                  <span>❓ 条件关键词</span>
-                  <span style="opacity: 0.6;">- 问号特效</span>
-                </div>
-                <div class="config-keywords">
-                  <span class="keyword-tag">if</span>
-                  <span class="keyword-tag">else</span>
-                  <span class="keyword-tag">switch</span>
-                  <span class="keyword-tag">case</span>
-                  <span class="keyword-tag">when</span>
-                  <span class="keyword-tag">match</span>
-                </div>
-              </div>
-
-              <div class="config-category">
-                <div class="config-category-title">
-                  <span>📦 变量关键词</span>
-                  <span style="opacity: 0.6;">- 盒子特效</span>
-                </div>
-                <div class="config-keywords">
-                  <span class="keyword-tag">const</span>
-                  <span class="keyword-tag">let</span>
-                  <span class="keyword-tag">var</span>
-                  <span class="keyword-tag">val</span>
-                </div>
-              </div>
-
-              <div class="config-category">
-                <div class="config-category-title">
-                  <span>↩️ 返回关键词</span>
-                  <span style="opacity: 0.6;">- 箭头特效</span>
-                </div>
-                <div class="config-keywords">
-                  <span class="keyword-tag">return</span>
-                  <span class="keyword-tag">yield</span>
-                  <span class="keyword-tag">break</span>
-                  <span class="keyword-tag">continue</span>
-                </div>
-              </div>
-
-              <button class="btn" style="width: 100%; margin-top: 16px; padding: 10px; font-size: 12px;" onclick="toggleKeywordEffect()">
-                ${keywordEffectEnabled ? '❌ 禁用关键词特效' : '✅ 启用关键词特效'}
-              </button>
+                return `
+                  <div class="config-category">
+                    <div class="config-category-title">
+                      <span>${categoryName}</span>
+                    </div>
+                    <div class="config-keywords">
+                      ${(config.keywords || []).map(kw => `<span class="keyword-tag">${kw}</span>`).join('')}
+                    </div>
+                    <div class="config-keywords" style="margin-top: 6px;">
+                      <span style="opacity: 0.6; font-size: 10px;">符号:</span>
+                      ${(config.symbols || []).map(sym => `<span style="font-size: 14px; margin: 0 2px;">${sym}</span>`).join('')}
+                    </div>
+                    <div class="category-controls">
+                      <button class="toggle-switch ${config.enabled ? 'enabled' : ''}"
+                              onclick="toggleCategory(event, '${category}')"
+                              data-category="${category}">
+                        ${config.enabled ? '✅ 已启用' : '❌ 已禁用'}
+                      </button>
+                      <button class="edit-btn" onclick="editCategory(event, '${category}')">
+                        ✏️ 编辑
+                      </button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
 
               <div style="margin-top: 16px; padding: 10px; background: var(--vscode-input-background); border-radius: 4px; font-size: 10px; opacity: 0.7;">
                 <strong>💡 提示</strong>
-                <div style="margin-top: 4px;">• 输入关键词时会触发文字破碎和符号爆炸特效</div>
+                <div style="margin-top: 4px;">• 点击"✏️ 编辑"可自定义关键词和符号</div>
+                <div>• 输入关键词时会触发文字破碎和符号爆炸特效</div>
                 <div>• 普通文字输入显示金币粒子特效</div>
-                <div>• 支持多种编程语言的关键词</div>
               </div>
             </div>
           </div>
@@ -996,7 +1061,6 @@ class IdleGameViewProvider {
           let RIPPLE_ENABLED = ${rippleEnabled};
           let RIPPLE_SIZE = ${rippleSize};
           let CODE_EFFECT_ENABLED = ${codeEffectEnabled};
-          let KEYWORD_EFFECT_ENABLED = ${keywordEffectEnabled};
 
           // 接收来自扩展的消息
           window.addEventListener('message', event => {
@@ -1129,10 +1193,6 @@ class IdleGameViewProvider {
             vscode.postMessage({ command: 'toggleCodeEffect' });
           }
 
-          function toggleKeywordEffect() {
-            vscode.postMessage({ command: 'toggleKeywordEffect' });
-          }
-
           function toggleConfigPanel(event) {
             event.stopPropagation();
             const panel = document.getElementById('codeEffectConfig');
@@ -1193,28 +1253,6 @@ class IdleGameViewProvider {
               }
             }
 
-            // 更新关键词特效开关状态
-            if (message.keywordEffectEnabled !== undefined) {
-              KEYWORD_EFFECT_ENABLED = message.keywordEffectEnabled;
-              // 更新配置面板中的状态显示
-              updateConfigPanelStatus();
-            }
-          }
-
-          // 更新配置面板状态显示
-          function updateConfigPanelStatus() {
-            const statusDivs = document.querySelectorAll('#codeEffectConfig div');
-            statusDivs.forEach(div => {
-              if (div.textContent && div.textContent.includes('关键词特效:')) {
-                div.textContent = '关键词特效: ' + (KEYWORD_EFFECT_ENABLED ? '✅ 启用' : '❌ 禁用');
-              }
-            });
-            const toggleBtns = document.querySelectorAll('#codeEffectConfig .btn');
-            toggleBtns.forEach(btn => {
-              if (btn.textContent.includes('关键词特效')) {
-                btn.textContent = KEYWORD_EFFECT_ENABLED ? '❌ 禁用关键词特效' : '✅ 启用关键词特效';
-              }
-            });
           }
 
           // 抽奖功能
@@ -1308,6 +1346,26 @@ class IdleGameViewProvider {
 
           // 添加全局点击监听器（总是添加，由createRipple内部判断）
           document.addEventListener('click', createRipple);
+
+          // ========== 分类特效配置管理 ==========
+
+          // 切换分类开关
+          function toggleCategory(event, category) {
+            event.stopPropagation();
+            vscode.postMessage({
+              command: 'toggleCategory',
+              category: category
+            });
+          }
+
+          // 编辑分类配置
+          function editCategory(event, category) {
+            event.stopPropagation();
+            vscode.postMessage({
+              command: 'editCategory',
+              category: category
+            });
+          }
         </script>
       </body>
       </html>
