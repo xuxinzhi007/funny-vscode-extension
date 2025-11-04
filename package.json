@@ -119,6 +119,13 @@
           "type": "boolean",
           "default": false,
           "description": "启用鼠标点击波纹特效"
+        },
+        "funny-vscode-extension.rippleSize": {
+          "type": "number",
+          "default": 100,
+          "minimum": 50,
+          "maximum": 300,
+          "description": "波纹特效的大小（像素）"
         }
       }
     }

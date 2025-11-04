@@ -21,10 +21,25 @@ class IdleGameViewProvider {
 
     webviewView.webview.html = this._getHtmlContent();
 
-    // 监听配置变化
+    // 监听配置变化 - 通过消息更新，不刷新整个页面
     const configChangeListener = vscode.workspace.onDidChangeConfiguration(e => {
       if (e.affectsConfiguration('funny-vscode-extension.enableRippleEffect')) {
-        this.refresh();
+        const rippleEnabled = vscode.workspace.getConfiguration('funny-vscode-extension').get('enableRippleEffect', false);
+        if (this._view) {
+          this._view.webview.postMessage({
+            command: 'configChanged',
+            rippleEnabled: rippleEnabled
+          });
+        }
+      }
+      if (e.affectsConfiguration('funny-vscode-extension.rippleSize')) {
+        const rippleSize = vscode.workspace.getConfiguration('funny-vscode-extension').get('rippleSize', 100);
+        if (this._view) {
+          this._view.webview.postMessage({
+            command: 'configChanged',
+            rippleSize: rippleSize
+          });
+        }
       }
     });
 
@@ -102,6 +117,11 @@ class IdleGameViewProvider {
               vscode.window.showInformationMessage(`波纹特效已${!currentValue ? '启用' : '禁用'}`);
             });
             break;
+
+          case 'updateRippleSize':
+            const sizeConfig = vscode.workspace.getConfiguration('funny-vscode-extension');
+            sizeConfig.update('rippleSize', message.size, true);
+            break;
         }
       }
     );
@@ -145,6 +165,7 @@ class IdleGameViewProvider {
 
     // 读取波纹特效配置
     const rippleEnabled = vscode.workspace.getConfiguration('funny-vscode-extension').get('enableRippleEffect', false);
+    const rippleSize = vscode.workspace.getConfiguration('funny-vscode-extension').get('rippleSize', 100);
 
     const upgradesList = Object.entries(gameState.upgrades).map(([key, upgrade]) => {
       const nextCost = Math.floor(upgrade.cost * Math.pow(1.15, upgrade.count));
@@ -544,16 +565,73 @@ class IdleGameViewProvider {
               opacity: 0;
             }
           }
+
+          /* 滑动条样式 */
+          .slider-container {
+            margin-top: 8px;
+            padding: 0;
+            background: var(--vscode-input-background);
+            border-radius: 4px;
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+            position: relative;
+          }
+          .slider-container.visible {
+            max-height: 100px;
+            opacity: 1;
+            padding: 8px;
+            margin-top: 8px;
+          }
+          .slider-label {
+            font-size: 10px;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            opacity: 0.8;
+          }
+          .slider {
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--vscode-scrollbarSlider-background);
+            outline: none;
+            -webkit-appearance: none;
+          }
+          .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--vscode-button-background);
+            cursor: pointer;
+          }
+          .slider::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--vscode-button-background);
+            cursor: pointer;
+            border: none;
+          }
+          .slider:hover::-webkit-slider-thumb {
+            background: var(--vscode-button-hoverBackground);
+          }
+          .slider:hover::-moz-range-thumb {
+            background: var(--vscode-button-hoverBackground);
+          }
         </style>
       </head>
       <body>
         <!-- 标签导航 -->
         <div class="tabs-container">
-          <button class="tab active" onclick="switchTab('home')">🏠 首页</button>
-          <button class="tab" onclick="switchTab('upgrade')">🏭 升级</button>
-          <button class="tab" onclick="switchTab('lottery')">🎰 抽奖</button>
-          <button class="tab" onclick="switchTab('achievement')">🏆 成就</button>
-          <button class="tab" onclick="switchTab('settings')">⚙️ 设置</button>
+          <button class="tab active" onclick="switchTab(event, 'home')">🏠 首页</button>
+          <button class="tab" onclick="switchTab(event, 'upgrade')">🏭 升级</button>
+          <button class="tab" onclick="switchTab(event, 'lottery')">🎰 抽奖</button>
+          <button class="tab" onclick="switchTab(event, 'achievement')">🏆 成就</button>
+          <button class="tab" onclick="switchTab(event, 'settings')">⚙️ 设置</button>
         </div>
 
         <!-- 首页标签 -->
@@ -637,12 +715,20 @@ class IdleGameViewProvider {
                 ${rippleEnabled ? '✅ 已启用' : '❌ 已禁用'}
               </button>
             </div>
+            <div class="slider-container ${rippleEnabled ? 'visible' : ''}" id="rippleSizeSlider">
+              <div class="slider-label">
+                <span>波纹大小</span>
+                <span id="rippleSizeValue">${rippleSize}px</span>
+              </div>
+              <input type="range" min="50" max="300" value="${rippleSize}" class="slider" id="sizeSlider" oninput="updateRippleSize(event, this.value)">
+            </div>
           </div>
         </div>
 
         <script>
           const vscode = acquireVsCodeApi();
-          const RIPPLE_ENABLED = ${rippleEnabled};
+          let RIPPLE_ENABLED = ${rippleEnabled};
+          let RIPPLE_SIZE = ${rippleSize};
 
           // 接收来自扩展的消息
           window.addEventListener('message', event => {
@@ -651,6 +737,8 @@ class IdleGameViewProvider {
               updateUI(message.data);
             } else if (message.command === 'upgradeSuccess') {
               handleUpgradeSuccess(message);
+            } else if (message.command === 'configChanged') {
+              handleConfigChanged(message);
             }
           });
 
@@ -734,13 +822,16 @@ class IdleGameViewProvider {
           }
 
           // 标签切换
-          function switchTab(tabName) {
+          function switchTab(event, tabName) {
+            // 阻止事件冒泡，避免触发其他点击事件
+            event.stopPropagation();
+
             // 移除所有active类
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
             // 添加active类到选中的标签
-            event.target.classList.add('active');
+            event.currentTarget.classList.add('active');
             document.getElementById('tab-' + tabName).classList.add('active');
           }
 
@@ -764,6 +855,50 @@ class IdleGameViewProvider {
 
           function toggleRipple() {
             vscode.postMessage({ command: 'toggleRipple' });
+          }
+
+          function updateRippleSize(event, value) {
+            // 阻止事件冒泡
+            event.stopPropagation();
+
+            RIPPLE_SIZE = parseInt(value);
+            document.getElementById('rippleSizeValue').textContent = value + 'px';
+            vscode.postMessage({ command: 'updateRippleSize', size: RIPPLE_SIZE });
+          }
+
+          // 处理配置变化消息
+          function handleConfigChanged(message) {
+            // 更新波纹开关状态
+            if (message.rippleEnabled !== undefined) {
+              RIPPLE_ENABLED = message.rippleEnabled;
+              const toggleBtn = document.getElementById('rippleToggleBtn');
+              if (toggleBtn) {
+                toggleBtn.textContent = RIPPLE_ENABLED ? '✅ 已启用' : '❌ 已禁用';
+              }
+
+              // 显示或隐藏滑动条
+              const sliderContainer = document.getElementById('rippleSizeSlider');
+              if (sliderContainer) {
+                if (RIPPLE_ENABLED) {
+                  sliderContainer.classList.add('visible');
+                } else {
+                  sliderContainer.classList.remove('visible');
+                }
+              }
+            }
+
+            // 更新波纹大小
+            if (message.rippleSize !== undefined) {
+              RIPPLE_SIZE = message.rippleSize;
+              const sizeValue = document.getElementById('rippleSizeValue');
+              if (sizeValue) {
+                sizeValue.textContent = RIPPLE_SIZE + 'px';
+              }
+              const slider = document.getElementById('sizeSlider');
+              if (slider) {
+                slider.value = RIPPLE_SIZE;
+              }
+            }
           }
 
           // 抽奖功能
@@ -822,11 +957,16 @@ class IdleGameViewProvider {
           function createRipple(event) {
             if (!RIPPLE_ENABLED) return;
 
+            // 如果点击的是滑动条或其容器，不创建波纹
+            if (event.target.type === 'range' || event.target.closest('.slider-container')) {
+              return;
+            }
+
             const ripple = document.createElement('div');
             ripple.className = 'ripple';
 
-            // 设置波纹的位置和大小
-            const size = Math.max(100, Math.random() * 150 + 50);
+            // 设置波纹的位置和大小（使用配置的大小）
+            const size = RIPPLE_SIZE;
             ripple.style.width = size + 'px';
             ripple.style.height = size + 'px';
             ripple.style.left = (event.clientX - size / 2) + 'px';
@@ -850,10 +990,8 @@ class IdleGameViewProvider {
             }, 600);
           }
 
-          // 添加全局点击监听器
-          if (RIPPLE_ENABLED) {
-            document.addEventListener('click', createRipple);
-          }
+          // 添加全局点击监听器（总是添加，由createRipple内部判断）
+          document.addEventListener('click', createRipple);
         </script>
       </body>
       </html>
