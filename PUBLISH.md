@@ -64,16 +64,37 @@ https://marketplace.visualstudio.com/items?itemName=xinzhixu.funny-vscode-extens
 
 ## 🔄 更新版本
 
-修改代码后：
+### 方法 1：使用更新脚本（推荐）
 
 ```bash
-# 更新版本号并发布
-/Users/admin/.npm-global/bin/vsce publish patch   # 1.0.0 → 1.0.1
-/Users/admin/.npm-global/bin/vsce publish minor   # 1.0.0 → 1.1.0
-/Users/admin/.npm-global/bin/vsce publish major   # 1.0.0 → 2.0.0
+./update.sh
 ```
 
-记得更新 `CHANGELOG.md`！
+自动完成：
+1. 询问新版本号
+2. 更新 package.json
+3. 自动打包
+
+然后手动：
+1. 更新 CHANGELOG.md
+2. Git 提交和推送
+3. 手动上传到 Marketplace
+
+### 方法 2：手动更新
+
+1. 编辑 `package.json`：
+   ```json
+   "version": "1.0.1"
+   ```
+
+2. 更新 `CHANGELOG.md`
+
+3. 打包：
+   ```bash
+   ./package.sh
+   ```
+
+4. 上传新的 `.vsix` 文件到 Marketplace
 
 ---
 
