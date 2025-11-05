@@ -157,10 +157,18 @@ class IdleGameViewProvider {
 
             if (categories[category]) {
               categories[category].enabled = !categories[category].enabled;
+              const newStatus = categories[category].enabled;
               categoryConfig.update('keywordCategories', categories, true).then(() => {
-                const statusText = categories[category].enabled ? '启用' : '禁用';
+                const statusText = newStatus ? '启用' : '禁用';
                 vscode.window.showInformationMessage(`✨ ${category} 特效已${statusText}`);
-                this.refresh(); // 刷新UI以显示新状态
+                // 发送消息给前端，动态更新按钮状态（不刷新整个页面）
+                if (this._view) {
+                  this._view.webview.postMessage({
+                    command: 'categoryToggled',
+                    category: category,
+                    enabled: newStatus
+                  });
+                }
               });
             }
             break;
@@ -270,7 +278,16 @@ class IdleGameViewProvider {
 
     await config.update('keywordCategories', categories, true);
     vscode.window.showInformationMessage(`✅ 已更新【${categoryNames[category] || category}】配置`);
-    this.refresh(); // 刷新UI
+
+    // 发送消息给前端，动态更新显示（不刷新整个页面）
+    if (this._view) {
+      this._view.webview.postMessage({
+        command: 'categoryUpdated',
+        category: category,
+        keywords: updatedKeywords,
+        symbols: updatedSymbols
+      });
+    }
   }
 
   _getHtmlContent() {
@@ -1071,6 +1088,10 @@ class IdleGameViewProvider {
               handleUpgradeSuccess(message);
             } else if (message.command === 'configChanged') {
               handleConfigChanged(message);
+            } else if (message.command === 'categoryToggled') {
+              handleCategoryToggled(message);
+            } else if (message.command === 'categoryUpdated') {
+              handleCategoryUpdated(message);
             }
           });
 
@@ -1253,6 +1274,56 @@ class IdleGameViewProvider {
               }
             }
 
+          }
+
+          // 处理类别开关切换
+          function handleCategoryToggled(message) {
+            const category = message.category;
+            const enabled = message.enabled;
+
+            // 查找对应的切换按钮
+            const toggleBtn = document.querySelector('button[data-category="' + category + '"].toggle-switch');
+            if (toggleBtn) {
+              // 更新按钮文本和样式
+              toggleBtn.textContent = enabled ? '✅ 已启用' : '❌ 已禁用';
+              if (enabled) {
+                toggleBtn.classList.add('enabled');
+              } else {
+                toggleBtn.classList.remove('enabled');
+              }
+            }
+          }
+
+          // 处理类别配置更新
+          function handleCategoryUpdated(message) {
+            const category = message.category;
+            const keywords = message.keywords;
+            const symbols = message.symbols;
+
+            // 查找对应的配置类别容器
+            const categoryContainer = document.querySelector('button[data-category="' + category + '"]');
+            if (categoryContainer) {
+              const configCategory = categoryContainer.closest('.config-category');
+              if (configCategory) {
+                // 更新关键词显示
+                const keywordsDiv = configCategory.querySelector('.config-keywords');
+                if (keywordsDiv && !keywordsDiv.textContent.includes('符号:')) {
+                  keywordsDiv.innerHTML = keywords.map(function(kw) {
+                    return '<span class="keyword-tag">' + kw + '</span>';
+                  }).join('');
+                }
+
+                // 更新符号显示
+                const allKeywordsDiv = configCategory.querySelectorAll('.config-keywords');
+                if (allKeywordsDiv.length > 1) {
+                  const symbolsDiv = allKeywordsDiv[1];
+                  const symbolsHTML = symbols.map(function(sym) {
+                    return '<span style="font-size: 14px; margin: 0 2px;">' + sym + '</span>';
+                  }).join('');
+                  symbolsDiv.innerHTML = '<span style="opacity: 0.6; font-size: 10px;">符号:</span>' + symbolsHTML;
+                }
+              }
+            }
           }
 
           // 抽奖功能
