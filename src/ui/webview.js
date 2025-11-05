@@ -992,18 +992,29 @@ class IdleGameViewProvider {
               <span>🎨 视觉特效</span>
             </div>
             <div class="item">
-              <div class="item-name">波纹特效</div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div class="item-name">🌊 波纹特效</div>
+                <span class="settings-icon" onclick="toggleRippleConfigPanel(event)" title="配置">⚙️</span>
+              </div>
               <div class="item-detail">点击时显示彩色波纹动画</div>
               <button class="btn" id="rippleToggleBtn" onclick="toggleRipple()">
                 ${rippleEnabled ? '✅ 已启用' : '❌ 已禁用'}
               </button>
             </div>
-            <div class="slider-container ${rippleEnabled ? 'visible' : ''}" id="rippleSizeSlider">
-              <div class="slider-label">
-                <span>波纹大小</span>
-                <span id="rippleSizeValue">${rippleSize}px</span>
+            <div class="config-panel" id="rippleConfig">
+              <div class="config-header">
+                <span>波纹特效设置</span>
+                <button class="close-btn" onclick="toggleRippleConfigPanel(event)">✕</button>
               </div>
-              <input type="range" min="50" max="300" value="${rippleSize}" class="slider" id="sizeSlider" oninput="updateRippleSize(event, this.value)">
+              <div class="config-content">
+                <div class="config-item">
+                  <div class="config-item-header">
+                    <span class="config-item-title">波纹大小</span>
+                    <span id="rippleSizeValue">${rippleSize}px</span>
+                  </div>
+                  <input type="range" min="50" max="300" value="${rippleSize}" class="slider" id="sizeSlider" oninput="updateRippleSize(event, this.value)">
+                </div>
+              </div>
             </div>
             <div class="item" style="margin-top: 10px;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -1222,6 +1233,14 @@ class IdleGameViewProvider {
             }
           }
 
+          function toggleRippleConfigPanel(event) {
+            event.stopPropagation();
+            const panel = document.getElementById('rippleConfig');
+            if (panel) {
+              panel.classList.toggle('visible');
+            }
+          }
+
           function updateRippleSize(event, value) {
             // 阻止事件冒泡
             event.stopPropagation();
@@ -1239,16 +1258,6 @@ class IdleGameViewProvider {
               const toggleBtn = document.getElementById('rippleToggleBtn');
               if (toggleBtn) {
                 toggleBtn.textContent = RIPPLE_ENABLED ? '✅ 已启用' : '❌ 已禁用';
-              }
-
-              // 显示或隐藏滑动条
-              const sliderContainer = document.getElementById('rippleSizeSlider');
-              if (sliderContainer) {
-                if (RIPPLE_ENABLED) {
-                  sliderContainer.classList.add('visible');
-                } else {
-                  sliderContainer.classList.remove('visible');
-                }
               }
             }
 
@@ -1382,8 +1391,13 @@ class IdleGameViewProvider {
           function createRipple(event) {
             if (!RIPPLE_ENABLED) return;
 
-            // 如果点击的是滑动条或其容器，不创建波纹
-            if (event.target.type === 'range' || event.target.closest('.slider-container')) {
+            // 如果点击的是滑动条，不创建波纹（但在配置面板其他地方允许显示）
+            if (event.target.type === 'range') {
+              return;
+            }
+
+            // 如果点击的是按钮或可交互元素，不创建波纹
+            if (event.target.tagName === 'BUTTON' || event.target.closest('.close-btn')) {
               return;
             }
 
