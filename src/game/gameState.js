@@ -14,7 +14,22 @@ let gameState = {
     quantumCompiler: { name: '量子编译器', count: 0, cost: 5000, production: 500 }
   },
   achievements: [],
-  startTime: Date.now()
+  startTime: Date.now(),
+  // 战斗系统状态
+  battle: {
+    wave: 1,
+    gold: 0,
+    experience: 0,
+    playerLevel: 1,
+    playerStats: {
+      health: 100,
+      attack: 15,
+      defense: 5,
+      critRate: 0.15,
+      critDamage: 2.0,
+      healthRegen: 2
+    }
+  }
 };
 
 /**
@@ -48,7 +63,21 @@ function resetGameState() {
       quantumCompiler: { name: '量子编译器', count: 0, cost: 5000, production: 500 }
     },
     achievements: [],
-    startTime: Date.now()
+    startTime: Date.now(),
+    battle: {
+      wave: 1,
+      gold: 0,
+      experience: 0,
+      playerLevel: 1,
+      playerStats: {
+        health: 100,
+        attack: 15,
+        defense: 5,
+        critRate: 0.15,
+        critDamage: 2.0,
+        healthRegen: 2
+      }
+    }
   };
 }
 

@@ -145,7 +145,14 @@ function activate(context) {
 /**
  * 停用扩展
  */
-function deactivate() {}
+function deactivate() {
+  // 清理战斗系统资源
+  const { getBattleSystem } = require('./src/game/battleSystem');
+  const battleSystem = getBattleSystem();
+  if (battleSystem) {
+    battleSystem.dispose();
+  }
+}
 
 module.exports = {
   activate,

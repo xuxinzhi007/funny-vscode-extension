@@ -4,6 +4,7 @@ const { getGameState, calculateCoinsPerSecond, formatNumber } = require('../game
 const { getAchievements, checkAchievements, resetAchievements } = require('../game/achievements');
 const { getLotteryPrizes, getLotteryPrices, drawPrize, grantPrize } = require('../game/lottery');
 const { saveGameState, showSaveInfo, backupGameSave } = require('../game/storage');
+const { getBattleSystem } = require('../game/battleSystem');
 
 // 侧边栏视图提供者
 class IdleGameViewProvider {
@@ -177,6 +178,60 @@ class IdleGameViewProvider {
             // 打开编辑对话框
             this._editCategoryDialog(message.category);
             break;
+
+          case 'battle_start':
+            // 开始战斗
+            const battleSystem = getBattleSystem();
+            const savedStats = gameState.battle.playerStats;
+            battleSystem.initPlayer(savedStats);
+            battleSystem.gold = gameState.battle.gold;
+            battleSystem.experience = gameState.battle.experience;
+            battleSystem.playerLevel = gameState.battle.playerLevel;
+            battleSystem.wave = message.wave || gameState.battle.wave;
+            battleSystem.startWave(battleSystem.wave);
+            break;
+
+          case 'battle_stop':
+            // 停止战斗
+            const bs = getBattleSystem();
+            bs.isInBattle = false;
+            bs.stopBattleLoop();
+            break;
+
+          case 'battle_reset':
+            // 重置战斗
+            const bsReset = getBattleSystem();
+            bsReset.resetPlayer();
+            break;
+
+          case 'battle_upgrade':
+            // 升级属性
+            const bsUpgrade = getBattleSystem();
+            const success = bsUpgrade.upgradeAttribute(message.attribute, message.cost);
+            if (success) {
+              // 保存升级后的状态
+              gameState.battle.gold = bsUpgrade.gold;
+              gameState.battle.playerStats = {
+                health: bsUpgrade.player.maxHealth,
+                attack: bsUpgrade.player.attack,
+                defense: bsUpgrade.player.defense,
+                critRate: bsUpgrade.player.critRate,
+                critDamage: bsUpgrade.player.critDamage,
+                healthRegen: bsUpgrade.player.healthRegen
+              };
+              saveGameState(this._context);
+            }
+            break;
+
+          case 'battle_nextWave':
+            // 下一波
+            const bsNext = getBattleSystem();
+            bsNext.wave++;
+            gameState.battle.wave = bsNext.wave;
+            bsNext.resetPlayer();
+            bsNext.startWave(bsNext.wave);
+            saveGameState(this._context);
+            break;
         }
       }
     );
@@ -185,6 +240,8 @@ class IdleGameViewProvider {
     const updateTimer = setInterval(() => {
       if (this._view) {
         const gameState = getGameState();
+        const battleSystem = getBattleSystem();
+
         this._view.webview.postMessage({
           command: 'updateGameState',
           data: {
@@ -194,9 +251,18 @@ class IdleGameViewProvider {
             achievements: gameState.achievements,
             startTime: gameState.startTime,
             activeBoosts: gameState.activeBoosts,
-            upgrades: gameState.upgrades
+            upgrades: gameState.upgrades,
+            battleState: battleSystem.getBattleState()
           }
         });
+
+        // 更新保存的战斗状态
+        if (battleSystem.player) {
+          gameState.battle.gold = battleSystem.gold;
+          gameState.battle.experience = battleSystem.experience;
+          gameState.battle.playerLevel = battleSystem.playerLevel;
+          gameState.battle.wave = battleSystem.wave;
+        }
       }
     }, 1000);
 
@@ -905,12 +971,192 @@ class IdleGameViewProvider {
           .slider:hover::-moz-range-thumb {
             background: var(--vscode-button-hoverBackground);
           }
+
+          /* 战斗系统样式 */
+          .battlefield {
+            background: var(--vscode-input-background);
+            border-radius: 4px;
+            padding: 8px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 250px;
+          }
+          #battleCanvas {
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 4px;
+            background: #1a1a2e;
+            max-width: 100%;
+            height: auto;
+          }
+          .battle-controls {
+            display: flex;
+            gap: 6px;
+            margin: 10px 0;
+          }
+          .battle-btn {
+            flex: 1;
+            padding: 8px;
+            font-size: 11px;
+            font-weight: bold;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+          .battle-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+          }
+          .battle-btn.start {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+          }
+          .battle-btn.start:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+          }
+          .battle-btn.stop {
+            background: linear-gradient(135deg, #ff9800 0%, #e68900 100%);
+            color: white;
+          }
+          .battle-btn.next {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+          }
+          .player-stats {
+            background: var(--vscode-input-background);
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+          }
+          .stat-title {
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid var(--vscode-panel-border);
+            opacity: 0.9;
+          }
+          .stat-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 8px 0;
+            font-size: 10px;
+          }
+          .stat-label {
+            min-width: 60px;
+            font-weight: bold;
+          }
+          .progress-bar {
+            flex: 1;
+            height: 16px;
+            background: var(--vscode-editor-background);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--vscode-panel-border);
+          }
+          .progress {
+            height: 100%;
+            transition: width 0.3s;
+            border-radius: 8px;
+          }
+          .stat-value {
+            min-width: 60px;
+            text-align: right;
+            font-weight: bold;
+          }
+          .stat-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            margin: 4px 0;
+            opacity: 0.9;
+          }
+          .upgrade-section {
+            background: var(--vscode-input-background);
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+          }
+          .upgrade-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            margin-top: 8px;
+          }
+          .upgrade-item {
+            background: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            border: none;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 10px;
+          }
+          .upgrade-item:hover:not(:disabled) {
+            background: var(--vscode-button-secondaryHoverBackground);
+            transform: translateY(-2px);
+          }
+          .upgrade-item:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+          }
+          .upgrade-name {
+            font-weight: bold;
+            margin-bottom: 3px;
+          }
+          .upgrade-cost {
+            opacity: 0.8;
+          }
+          .battle-log {
+            background: var(--vscode-input-background);
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            max-height: 150px;
+          }
+          .log-content {
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 9px;
+            font-family: monospace;
+          }
+          .log-entry {
+            padding: 2px 0;
+            opacity: 0.9;
+            border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+          }
+          .log-entry.damage {
+            color: #ff6b6b;
+          }
+          .log-entry.crit {
+            color: #ffd700;
+            font-weight: bold;
+          }
+          .log-entry.victory {
+            color: #51cf66;
+            font-weight: bold;
+          }
+          .log-entry.defeat {
+            color: #ff6b6b;
+            font-weight: bold;
+          }
+          .log-empty {
+            text-align: center;
+            opacity: 0.5;
+            padding: 20px 0;
+          }
         </style>
       </head>
       <body>
         <!-- 标签导航 -->
         <div class="tabs-container">
           <button class="tab active" onclick="switchTab(event, 'home')">🏠 首页</button>
+          <button class="tab" onclick="switchTab(event, 'battle')">⚔️ 战斗</button>
           <button class="tab" onclick="switchTab(event, 'upgrade')">🏭 升级</button>
           <button class="tab" onclick="switchTab(event, 'lottery')">🎰 抽奖</button>
           <button class="tab" onclick="switchTab(event, 'achievement')">🏆 成就</button>
@@ -927,6 +1173,96 @@ class IdleGameViewProvider {
               <span>总: ${formatNumber(gameState.totalCoinsEarned)}</span>
               <span>成就: ${gameState.achievements.length}/${achievements.length}</span>
               <span>${Math.floor((Date.now() - gameState.startTime) / 60000)}分钟</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 战斗标签 -->
+        <div class="tab-content" id="tab-battle">
+          <div class="section">
+            <div class="title">
+              <span>⚔️ 战斗场地 - 第 <span id="currentWave">${gameState.battle.wave}</span> 波</span>
+            </div>
+
+            <!-- 战场画布 -->
+            <div class="battlefield">
+              <canvas id="battleCanvas" width="300" height="250"></canvas>
+            </div>
+
+            <!-- 战斗控制 -->
+            <div class="battle-controls">
+              <button class="battle-btn start" id="startBattleBtn" onclick="startBattle()">
+                ▶️ 开始战斗
+              </button>
+              <button class="battle-btn stop" id="stopBattleBtn" onclick="stopBattle()" disabled>
+                ⏸️ 停止
+              </button>
+              <button class="battle-btn next" id="nextWaveBtn" onclick="nextWave()" disabled>
+                ⏭️ 下一波
+              </button>
+            </div>
+
+            <!-- 玩家状态 -->
+            <div class="player-stats">
+              <div class="stat-title">👤 角色状态 (Lv.<span id="playerLevel">${gameState.battle.playerLevel}</span>)</div>
+              <div class="stat-bar">
+                <div class="stat-label">❤️ 生命值</div>
+                <div class="progress-bar">
+                  <div class="progress" id="playerHealthBar" style="width: 100%; background: #ff4444;"></div>
+                </div>
+                <div class="stat-value" id="playerHealthText">100/100</div>
+              </div>
+              <div class="stat-row">
+                <span>⚔️ 攻击: <span id="playerAttack">${gameState.battle.playerStats.attack}</span></span>
+                <span>🛡️ 防御: <span id="playerDefense">${gameState.battle.playerStats.defense}</span></span>
+              </div>
+              <div class="stat-row">
+                <span>💥 暴击率: <span id="playerCritRate">${(gameState.battle.playerStats.critRate * 100).toFixed(0)}%</span></span>
+                <span>💢 暴击伤害: <span id="playerCritDmg">${gameState.battle.playerStats.critDamage.toFixed(1)}x</span></span>
+              </div>
+              <div class="stat-row">
+                <span>💚 生命恢复: <span id="playerRegen">${gameState.battle.playerStats.healthRegen}/s</span></span>
+                <span>💰 金币: <span id="battleGold">${gameState.battle.gold}</span></span>
+              </div>
+            </div>
+
+            <!-- 属性升级 -->
+            <div class="upgrade-section">
+              <div class="stat-title">📈 属性升级</div>
+              <div class="upgrade-grid">
+                <button class="upgrade-item" onclick="upgradeAttribute('health', 50)">
+                  <div class="upgrade-name">❤️ 生命值 +20</div>
+                  <div class="upgrade-cost">💰 50</div>
+                </button>
+                <button class="upgrade-item" onclick="upgradeAttribute('attack', 80)">
+                  <div class="upgrade-name">⚔️ 攻击力 +5</div>
+                  <div class="upgrade-cost">💰 80</div>
+                </button>
+                <button class="upgrade-item" onclick="upgradeAttribute('defense', 60)">
+                  <div class="upgrade-name">🛡️ 防御力 +2</div>
+                  <div class="upgrade-cost">💰 60</div>
+                </button>
+                <button class="upgrade-item" onclick="upgradeAttribute('critRate', 100)">
+                  <div class="upgrade-name">💥 暴击率 +5%</div>
+                  <div class="upgrade-cost">💰 100</div>
+                </button>
+                <button class="upgrade-item" onclick="upgradeAttribute('critDamage', 120)">
+                  <div class="upgrade-name">💢 暴击伤害 +0.2x</div>
+                  <div class="upgrade-cost">💰 120</div>
+                </button>
+                <button class="upgrade-item" onclick="upgradeAttribute('healthRegen', 70)">
+                  <div class="upgrade-name">💚 生命恢复 +1/s</div>
+                  <div class="upgrade-cost">💰 70</div>
+                </button>
+              </div>
+            </div>
+
+            <!-- 战斗日志 -->
+            <div class="battle-log">
+              <div class="stat-title">📜 战斗日志</div>
+              <div class="log-content" id="battleLog">
+                <div class="log-empty">等待战斗开始...</div>
+              </div>
             </div>
           </div>
         </div>
@@ -1095,6 +1431,10 @@ class IdleGameViewProvider {
             const message = event.data;
             if (message.command === 'updateGameState') {
               updateUI(message.data);
+              // 更新战斗UI
+              if (message.data.battleState) {
+                updateBattleUI(message.data.battleState);
+              }
             } else if (message.command === 'upgradeSuccess') {
               handleUpgradeSuccess(message);
             } else if (message.command === 'configChanged') {
@@ -1451,6 +1791,245 @@ class IdleGameViewProvider {
               category: category
             });
           }
+
+          // ========== 战斗系统函数 ==========
+
+          let battleCanvas = null;
+          let battleCtx = null;
+          let lastBattleState = null;
+
+          // 初始化画布
+          function initBattleCanvas() {
+            battleCanvas = document.getElementById('battleCanvas');
+            if (battleCanvas) {
+              battleCtx = battleCanvas.getContext('2d');
+            }
+          }
+
+          // 开始战斗
+          function startBattle() {
+            vscode.postMessage({ command: 'battle_start' });
+            document.getElementById('startBattleBtn').disabled = true;
+            document.getElementById('stopBattleBtn').disabled = false;
+            document.getElementById('nextWaveBtn').disabled = true;
+          }
+
+          // 停止战斗
+          function stopBattle() {
+            vscode.postMessage({ command: 'battle_stop' });
+            document.getElementById('startBattleBtn').disabled = false;
+            document.getElementById('stopBattleBtn').disabled = true;
+          }
+
+          // 下一波
+          function nextWave() {
+            vscode.postMessage({ command: 'battle_nextWave' });
+            document.getElementById('startBattleBtn').disabled = true;
+            document.getElementById('stopBattleBtn').disabled = false;
+            document.getElementById('nextWaveBtn').disabled = true;
+          }
+
+          // 升级属性
+          function upgradeAttribute(attribute, cost) {
+            vscode.postMessage({
+              command: 'battle_upgrade',
+              attribute: attribute,
+              cost: cost
+            });
+          }
+
+          // 更新战斗UI
+          function updateBattleUI(battleState) {
+            if (!battleState) return;
+
+            lastBattleState = battleState;
+
+            // 更新波次
+            const waveElement = document.getElementById('currentWave');
+            if (waveElement) {
+              waveElement.textContent = battleState.wave;
+            }
+
+            // 更新玩家状态
+            if (battleState.player) {
+              const player = battleState.player;
+
+              // 生命值
+              const healthBar = document.getElementById('playerHealthBar');
+              const healthText = document.getElementById('playerHealthText');
+              if (healthBar && healthText) {
+                const healthPercent = (player.health / player.maxHealth) * 100;
+                healthBar.style.width = healthPercent + '%';
+                healthText.textContent = player.health + '/' + player.maxHealth;
+              }
+
+              // 等级
+              const levelElement = document.getElementById('playerLevel');
+              if (levelElement) {
+                levelElement.textContent = battleState.playerLevel;
+              }
+
+              // 属性
+              const attackElement = document.getElementById('playerAttack');
+              if (attackElement) attackElement.textContent = player.attack;
+
+              const defenseElement = document.getElementById('playerDefense');
+              if (defenseElement) defenseElement.textContent = player.defense;
+
+              const critRateElement = document.getElementById('playerCritRate');
+              if (critRateElement) critRateElement.textContent = (player.critRate * 100).toFixed(0) + '%';
+
+              const critDmgElement = document.getElementById('playerCritDmg');
+              if (critDmgElement) critDmgElement.textContent = player.critDamage.toFixed(1) + 'x';
+
+              const regenElement = document.getElementById('playerRegen');
+              if (regenElement) regenElement.textContent = player.healthRegen + '/s';
+            }
+
+            // 更新金币
+            const goldElement = document.getElementById('battleGold');
+            if (goldElement) {
+              goldElement.textContent = battleState.gold;
+            }
+
+            // 更新按钮状态
+            const startBtn = document.getElementById('startBattleBtn');
+            const stopBtn = document.getElementById('stopBattleBtn');
+            const nextBtn = document.getElementById('nextWaveBtn');
+
+            if (battleState.isInBattle) {
+              if (startBtn) startBtn.disabled = true;
+              if (stopBtn) stopBtn.disabled = false;
+              if (nextBtn) nextBtn.disabled = true;
+            } else {
+              if (startBtn) startBtn.disabled = false;
+              if (stopBtn) stopBtn.disabled = true;
+              // 如果所有敌人都死了，可以进入下一波
+              const allEnemiesDead = battleState.enemies.every(e => e.isDead);
+              if (nextBtn && allEnemiesDead && battleState.player && !battleState.player.isDead) {
+                nextBtn.disabled = false;
+              }
+            }
+
+            // 更新战斗日志
+            if (battleState.battleLog && battleState.battleLog.length > 0) {
+              const logContent = document.getElementById('battleLog');
+              if (logContent) {
+                logContent.innerHTML = battleState.battleLog.map(log => {
+                  let className = 'log-entry';
+                  if (log.message.includes('暴击')) className += ' crit';
+                  else if (log.message.includes('胜利')) className += ' victory';
+                  else if (log.message.includes('失败') || log.message.includes('阵亡')) className += ' defeat';
+                  else if (log.message.includes('伤害')) className += ' damage';
+                  return '<div class="' + className + '">[' + log.time + '] ' + log.message + '</div>';
+                }).join('');
+                // 自动滚动到底部
+                logContent.scrollTop = logContent.scrollHeight;
+              }
+            }
+
+            // 渲染战场
+            renderBattlefield(battleState);
+          }
+
+          // 渲染战场
+          function renderBattlefield(battleState) {
+            if (!battleCtx || !battleCanvas) {
+              initBattleCanvas();
+              if (!battleCtx) return;
+            }
+
+            const width = battleCanvas.width;
+            const height = battleCanvas.height;
+
+            // 清空画布
+            battleCtx.fillStyle = '#1a1a2e';
+            battleCtx.fillRect(0, 0, width, height);
+
+            // 绘制网格背景
+            battleCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            battleCtx.lineWidth = 1;
+            for (let i = 0; i < width; i += 30) {
+              battleCtx.beginPath();
+              battleCtx.moveTo(i, 0);
+              battleCtx.lineTo(i, height);
+              battleCtx.stroke();
+            }
+            for (let i = 0; i < height; i += 30) {
+              battleCtx.beginPath();
+              battleCtx.moveTo(0, i);
+              battleCtx.lineTo(width, i);
+              battleCtx.stroke();
+            }
+
+            // 绘制玩家
+            if (battleState.player && !battleState.player.isDead) {
+              const player = battleState.player;
+              const px = (player.x / 100) * width;
+              const py = (player.y / 100) * height;
+
+              // 玩家圆圈
+              battleCtx.fillStyle = player.isDead ? '#666' : '#4CAF50';
+              battleCtx.beginPath();
+              battleCtx.arc(px, py, 12, 0, Math.PI * 2);
+              battleCtx.fill();
+
+              // 玩家名字
+              battleCtx.fillStyle = '#fff';
+              battleCtx.font = '10px sans-serif';
+              battleCtx.textAlign = 'center';
+              battleCtx.fillText('👤', px, py + 4);
+
+              // 血条
+              drawHealthBar(battleCtx, px, py - 18, 30, 4, player.health, player.maxHealth, '#4CAF50');
+            }
+
+            // 绘制敌人
+            battleState.enemies.forEach((enemy, index) => {
+              if (enemy.isDead) return;
+
+              const ex = (enemy.x / 100) * width;
+              const ey = (enemy.y / 100) * height;
+
+              // 敌人圆圈
+              battleCtx.fillStyle = enemy.isDead ? '#666' : '#f44336';
+              battleCtx.beginPath();
+              battleCtx.arc(ex, ey, 10, 0, Math.PI * 2);
+              battleCtx.fill();
+
+              // 敌人图标
+              battleCtx.fillStyle = '#fff';
+              battleCtx.font = '10px sans-serif';
+              battleCtx.textAlign = 'center';
+              battleCtx.fillText('👹', ex, ey + 4);
+
+              // 血条
+              drawHealthBar(battleCtx, ex, ey - 16, 25, 3, enemy.health, enemy.maxHealth, '#f44336');
+            });
+          }
+
+          // 绘制血条
+          function drawHealthBar(ctx, x, y, width, height, current, max, color) {
+            const percent = current / max;
+
+            // 背景
+            ctx.fillStyle = '#333';
+            ctx.fillRect(x - width/2, y, width, height);
+
+            // 血量
+            ctx.fillStyle = color;
+            ctx.fillRect(x - width/2, y, width * percent, height);
+
+            // 边框
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x - width/2, y, width, height);
+          }
+
+          // 在页面加载时初始化画布
+          setTimeout(() => {
+            initBattleCanvas();
+          }, 100);
         </script>
       </body>
       </html>
