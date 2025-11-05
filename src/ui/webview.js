@@ -972,6 +972,163 @@ class IdleGameViewProvider {
             background: var(--vscode-button-hoverBackground);
           }
 
+          /* 首页紧凑布局样式 */
+          .stats-compact {
+            background: var(--vscode-input-background);
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            border-left: 3px solid #FFD700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+          }
+          .stat-group {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+          }
+          .coins-compact {
+            font-size: 16px;
+            font-weight: bold;
+            color: #FFD700;
+          }
+          .rate-compact {
+            font-size: 11px;
+            color: #7CFC00;
+          }
+          .battle-gold-compact {
+            font-size: 11px;
+            color: #ff6b6b;
+            font-weight: bold;
+          }
+          .battle-level-compact {
+            font-size: 11px;
+            color: #4dabf7;
+            font-weight: bold;
+          }
+
+          /* 首页战斗区域 */
+          .home-battle-section {
+            background: var(--vscode-input-background);
+            border-radius: 4px;
+            padding: 8px;
+            margin-bottom: 8px;
+          }
+          .battle-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--vscode-panel-border);
+          }
+          .battle-wave-info {
+            flex: 1;
+            font-size: 12px;
+            font-weight: bold;
+          }
+          .quick-btn {
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: bold;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 32px;
+          }
+          .quick-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+          }
+          .quick-btn.start {
+            background: #4CAF50;
+            color: white;
+          }
+          .quick-btn.stop {
+            background: #ff9800;
+            color: white;
+          }
+          .quick-btn.next {
+            background: #2196F3;
+            color: white;
+          }
+          .quick-btn:hover:not(:disabled) {
+            transform: scale(1.05);
+          }
+
+          .battlefield-home {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 8px 0;
+            background: #1a1a2e;
+            border-radius: 4px;
+            padding: 6px;
+          }
+
+          .player-stats-compact {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 8px;
+            border-radius: 4px;
+            margin: 8px 0;
+          }
+          .stat-bar-compact {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+            font-size: 10px;
+          }
+          .stat-label-compact {
+            font-size: 12px;
+            min-width: 20px;
+          }
+          .progress-bar-compact {
+            flex: 1;
+            height: 12px;
+            background: var(--vscode-editor-background);
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid var(--vscode-panel-border);
+          }
+          .stat-value-compact {
+            min-width: 50px;
+            text-align: right;
+            font-weight: bold;
+            font-size: 9px;
+          }
+          .stat-row-compact {
+            display: flex;
+            justify-content: space-around;
+            font-size: 9px;
+            opacity: 0.9;
+          }
+
+          .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-top: 8px;
+          }
+          .action-btn {
+            background: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            border: none;
+            padding: 6px;
+            font-size: 10px;
+            font-weight: bold;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+          .action-btn:hover {
+            background: var(--vscode-button-secondaryHoverBackground);
+            transform: translateY(-1px);
+          }
+
           /* 战斗系统样式 */
           .battlefield {
             background: var(--vscode-input-background);
@@ -1165,14 +1322,53 @@ class IdleGameViewProvider {
 
         <!-- 首页标签 -->
         <div class="tab-content active" id="tab-home">
-          <div class="stats">
-            <div class="coins">💰 ${formatNumber(gameState.coins)}</div>
-            <div class="rate">⚡ +${formatNumber(gameState.coinsPerSecond)}/s</div>
-            <button class="click-btn" onclick="clickCoin()">点击 +1</button>
-            <div class="mini-stats">
-              <span>总: ${formatNumber(gameState.totalCoinsEarned)}</span>
-              <span>成就: ${gameState.achievements.length}/${achievements.length}</span>
-              <span>${Math.floor((Date.now() - gameState.startTime) / 60000)}分钟</span>
+          <!-- 顶部金币信息栏 -->
+          <div class="stats-compact">
+            <div class="stat-group">
+              <div class="coins-compact">💰 ${formatNumber(gameState.coins)}</div>
+              <div class="rate-compact">⚡ +${formatNumber(gameState.coinsPerSecond)}/s</div>
+            </div>
+            <div class="stat-group">
+              <div class="battle-gold-compact">⚔️ ${gameState.battle.gold} 金币</div>
+              <div class="battle-level-compact">👤 Lv.${gameState.battle.playerLevel}</div>
+            </div>
+          </div>
+
+          <!-- 战斗区域 -->
+          <div class="home-battle-section">
+            <div class="battle-header">
+              <span class="battle-wave-info">⚔️ 第 <span id="homeWave">${gameState.battle.wave}</span> 波</span>
+              <button class="quick-btn start" id="homeStartBtn" onclick="startBattle()">▶️</button>
+              <button class="quick-btn stop" id="homeStopBtn" onclick="stopBattle()" disabled>⏸️</button>
+              <button class="quick-btn next" id="homeNextBtn" onclick="nextWave()" disabled>⏭️</button>
+            </div>
+
+            <!-- 战场画布 -->
+            <div class="battlefield-home">
+              <canvas id="battleCanvas" width="300" height="200"></canvas>
+            </div>
+
+            <!-- 玩家状态条 -->
+            <div class="player-stats-compact">
+              <div class="stat-bar-compact">
+                <div class="stat-label-compact">❤️</div>
+                <div class="progress-bar-compact">
+                  <div class="progress" id="homePlayerHealthBar" style="width: 100%; background: #ff4444;"></div>
+                </div>
+                <div class="stat-value-compact" id="homePlayerHealthText">100/100</div>
+              </div>
+              <div class="stat-row-compact">
+                <span>⚔️ <span id="homePlayerAttack">${gameState.battle.playerStats.attack}</span></span>
+                <span>🛡️ <span id="homePlayerDefense">${gameState.battle.playerStats.defense}</span></span>
+                <span>💥 <span id="homePlayerCritRate">${(gameState.battle.playerStats.critRate * 100).toFixed(0)}%</span></span>
+              </div>
+            </div>
+
+            <!-- 快速操作 -->
+            <div class="quick-actions">
+              <button class="action-btn" onclick="clickCoin()">💰 点击+1</button>
+              <button class="action-btn" onclick="switchTab(event, 'battle')">⚔️ 战斗详情</button>
+              <button class="action-btn" onclick="switchTab(event, 'upgrade')">🏭 升级</button>
             </div>
           </div>
         </div>
@@ -1809,24 +2005,63 @@ class IdleGameViewProvider {
           // 开始战斗
           function startBattle() {
             vscode.postMessage({ command: 'battle_start' });
-            document.getElementById('startBattleBtn').disabled = true;
-            document.getElementById('stopBattleBtn').disabled = false;
-            document.getElementById('nextWaveBtn').disabled = true;
+
+            // 更新所有开始按钮
+            const startBtns = ['startBattleBtn', 'homeStartBtn'];
+            const stopBtns = ['stopBattleBtn', 'homeStopBtn'];
+            const nextBtns = ['nextWaveBtn', 'homeNextBtn'];
+
+            startBtns.forEach(id => {
+              const btn = document.getElementById(id);
+              if (btn) btn.disabled = true;
+            });
+            stopBtns.forEach(id => {
+              const btn = document.getElementById(id);
+              if (btn) btn.disabled = false;
+            });
+            nextBtns.forEach(id => {
+              const btn = document.getElementById(id);
+              if (btn) btn.disabled = true;
+            });
           }
 
           // 停止战斗
           function stopBattle() {
             vscode.postMessage({ command: 'battle_stop' });
-            document.getElementById('startBattleBtn').disabled = false;
-            document.getElementById('stopBattleBtn').disabled = true;
+
+            const startBtns = ['startBattleBtn', 'homeStartBtn'];
+            const stopBtns = ['stopBattleBtn', 'homeStopBtn'];
+
+            startBtns.forEach(id => {
+              const btn = document.getElementById(id);
+              if (btn) btn.disabled = false;
+            });
+            stopBtns.forEach(id => {
+              const btn = document.getElementById(id);
+              if (btn) btn.disabled = true;
+            });
           }
 
           // 下一波
           function nextWave() {
             vscode.postMessage({ command: 'battle_nextWave' });
-            document.getElementById('startBattleBtn').disabled = true;
-            document.getElementById('stopBattleBtn').disabled = false;
-            document.getElementById('nextWaveBtn').disabled = true;
+
+            const startBtns = ['startBattleBtn', 'homeStartBtn'];
+            const stopBtns = ['stopBattleBtn', 'homeStopBtn'];
+            const nextBtns = ['nextWaveBtn', 'homeNextBtn'];
+
+            startBtns.forEach(id => {
+              const btn = document.getElementById(id);
+              if (btn) btn.disabled = true;
+            });
+            stopBtns.forEach(id => {
+              const btn = document.getElementById(id);
+              if (btn) btn.disabled = false;
+            });
+            nextBtns.forEach(id => {
+              const btn = document.getElementById(id);
+              if (btn) btn.disabled = true;
+            });
           }
 
           // 升级属性
@@ -1844,24 +2079,43 @@ class IdleGameViewProvider {
 
             lastBattleState = battleState;
 
-            // 更新波次
-            const waveElement = document.getElementById('currentWave');
-            if (waveElement) {
-              waveElement.textContent = battleState.wave;
+            // 更新波次（首页和战斗页）
+            const waveElements = ['currentWave', 'homeWave'];
+            waveElements.forEach(id => {
+              const el = document.getElementById(id);
+              if (el) el.textContent = battleState.wave;
+            });
+
+            // 更新首页金币
+            const battleGoldCompact = document.querySelector('.battle-gold-compact');
+            if (battleGoldCompact) {
+              battleGoldCompact.textContent = '⚔️ ' + battleState.gold + ' 金币';
+            }
+
+            // 更新首页等级
+            const battleLevelCompact = document.querySelector('.battle-level-compact');
+            if (battleLevelCompact) {
+              battleLevelCompact.textContent = '👤 Lv.' + battleState.playerLevel;
             }
 
             // 更新玩家状态
             if (battleState.player) {
               const player = battleState.player;
+              const healthPercent = (player.health / player.maxHealth) * 100;
 
-              // 生命值
-              const healthBar = document.getElementById('playerHealthBar');
-              const healthText = document.getElementById('playerHealthText');
-              if (healthBar && healthText) {
-                const healthPercent = (player.health / player.maxHealth) * 100;
-                healthBar.style.width = healthPercent + '%';
-                healthText.textContent = player.health + '/' + player.maxHealth;
-              }
+              // 更新生命值（首页和战斗页）
+              const healthBars = ['playerHealthBar', 'homePlayerHealthBar'];
+              const healthTexts = ['playerHealthText', 'homePlayerHealthText'];
+
+              healthBars.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.width = healthPercent + '%';
+              });
+
+              healthTexts.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = player.health + '/' + player.maxHealth;
+              });
 
               // 等级
               const levelElement = document.getElementById('playerLevel');
@@ -1869,7 +2123,7 @@ class IdleGameViewProvider {
                 levelElement.textContent = battleState.playerLevel;
               }
 
-              // 属性
+              // 属性（战斗页）
               const attackElement = document.getElementById('playerAttack');
               if (attackElement) attackElement.textContent = player.attack;
 
@@ -1884,6 +2138,16 @@ class IdleGameViewProvider {
 
               const regenElement = document.getElementById('playerRegen');
               if (regenElement) regenElement.textContent = player.healthRegen + '/s';
+
+              // 属性（首页）
+              const homeAttack = document.getElementById('homePlayerAttack');
+              if (homeAttack) homeAttack.textContent = player.attack;
+
+              const homeDefense = document.getElementById('homePlayerDefense');
+              if (homeDefense) homeDefense.textContent = player.defense;
+
+              const homeCritRate = document.getElementById('homePlayerCritRate');
+              if (homeCritRate) homeCritRate.textContent = (player.critRate * 100).toFixed(0) + '%';
             }
 
             // 更新金币
@@ -1892,22 +2156,41 @@ class IdleGameViewProvider {
               goldElement.textContent = battleState.gold;
             }
 
-            // 更新按钮状态
-            const startBtn = document.getElementById('startBattleBtn');
-            const stopBtn = document.getElementById('stopBattleBtn');
-            const nextBtn = document.getElementById('nextWaveBtn');
+            // 更新按钮状态（首页和战斗页）
+            const startBtns = ['startBattleBtn', 'homeStartBtn'];
+            const stopBtns = ['stopBattleBtn', 'homeStopBtn'];
+            const nextBtns = ['nextWaveBtn', 'homeNextBtn'];
 
             if (battleState.isInBattle) {
-              if (startBtn) startBtn.disabled = true;
-              if (stopBtn) stopBtn.disabled = false;
-              if (nextBtn) nextBtn.disabled = true;
+              startBtns.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.disabled = true;
+              });
+              stopBtns.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.disabled = false;
+              });
+              nextBtns.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.disabled = true;
+              });
             } else {
-              if (startBtn) startBtn.disabled = false;
-              if (stopBtn) stopBtn.disabled = true;
+              startBtns.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.disabled = false;
+              });
+              stopBtns.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.disabled = true;
+              });
+
               // 如果所有敌人都死了，可以进入下一波
               const allEnemiesDead = battleState.enemies.every(e => e.isDead);
-              if (nextBtn && allEnemiesDead && battleState.player && !battleState.player.isDead) {
-                nextBtn.disabled = false;
+              if (allEnemiesDead && battleState.player && !battleState.player.isDead) {
+                nextBtns.forEach(id => {
+                  const btn = document.getElementById(id);
+                  if (btn) btn.disabled = false;
+                });
               }
             }
 

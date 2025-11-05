@@ -165,7 +165,7 @@ class BattleSystem {
       clearInterval(this.regenInterval);
     }
 
-    // 战斗逻辑 - 每1秒执行一次攻击
+    // 战斗逻辑 - 每0.5秒执行一次攻击（提升流畅度）
     this.battleInterval = setInterval(() => {
       if (!this.isInBattle) {
         this.stopBattleLoop();
@@ -173,7 +173,7 @@ class BattleSystem {
       }
 
       this.executeBattleRound();
-    }, 1000);
+    }, 500);
 
     // 生命恢复 - 每秒执行
     this.regenInterval = setInterval(() => {
@@ -258,7 +258,7 @@ class BattleSystem {
    * 移动角色向目标
    */
   moveCharacter(character, target) {
-    const speed = 5; // 每次移动5个单位
+    const speed = 2; // 每次移动2个单位（配合更快的更新频率）
     const dx = target.x - character.x;
     const dy = target.y - character.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
