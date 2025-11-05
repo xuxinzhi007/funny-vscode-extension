@@ -7,6 +7,14 @@ vsc-extension-quickstart.md
 **/jsconfig.json
 **/*.map
 **/.eslintrc.json
-**/*.sh
 .DS_Store
 *.vsix
+
+# 开发文件
+package.sh
+PUBLISH.md
+.idea/**
+
+# Git 相关
+.git/**
+.github/**

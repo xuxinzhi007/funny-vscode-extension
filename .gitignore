@@ -6,3 +6,9 @@ node_modules/
 out/
 dist/
 .vscode-test-web/
+
+# 临时文件
+CREATE_TOKEN_GUIDE.md
+
+# IDE
+.idea/
