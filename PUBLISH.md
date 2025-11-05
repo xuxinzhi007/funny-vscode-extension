@@ -115,3 +115,33 @@ https://marketplace.visualstudio.com/items?itemName=xinzhixu.funny-vscode-extens
 - Token 过期后需要重新创建
 - 发布后无法立即删除，只能取消发布
 - 修改扩展信息需要重新发布版本
+
+ 🎯 生成 .vscode 文件夹的方法：
+
+  方法 1：使用 Yeoman 生成器（推荐）
+
+  创建新扩展项目时，Yeoman 会自动生成：
+
+  # 安装生成器
+  npm install -g yo generator-code
+
+  # 创建新扩展项目
+  yo code
+
+ # 选择扩展类型后，会自动生成：
+  # ✅ .vscode/launch.json
+  # ✅ .vscode/tasks.json
+
+  ---
+  方法 2：VS Code 自动生成 launch.json
+
+  如果已有项目但没有 .vscode 文件夹：
+
+  1. 打开您的扩展项目
+  2. 按 F5 或点击左侧"运行和调试"图标
+  3. VS Code 会提示："未检测到配置"
+  4. 点击 "创建 launch.json 文件"
+  5. 选择环境："VS Code Extension Development"
+  6. 自动生成 .vscode/launch.json
+
+  ---

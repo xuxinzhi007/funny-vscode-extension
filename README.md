@@ -91,12 +91,54 @@ A VSCode extension that makes coding more fun! Combines an idle game, cool effec
 
 ## 🚀 快速开始
 
-### 安装
+### 用户安装
 
-1. 克隆或下载此项目到本地
-2. 在 VSCode 中打开项目文件夹
-3. 按 **F5** 键启动调试
-4. 一个新的 VSCode 窗口将打开，扩展已自动激活
+#### 方式 1：从 Marketplace 安装（推荐）
+
+1. 打开 VS Code 或 Cursor
+2. 点击左侧扩展图标
+3. 搜索 **"Coding Idle Game"**
+4. 点击安装
+
+或者直接访问：[Marketplace 页面](https://marketplace.visualstudio.com/items?itemName=xinzhixu.funny-vscode-extension)
+
+#### 方式 2：使用扩展 ID 安装
+
+如果搜索不到，可以用扩展 ID 直接安装：
+```
+xinzhixu.funny-vscode-extension
+```
+
+### 开发者安装（调试和开发）
+
+如果您想修改或调试扩展代码：
+
+1. **克隆项目**
+   ```bash
+   git clone https://github.com/xuxinzhi007/funny-vscode-extension.git
+   cd funny-vscode-extension
+   ```
+
+2. **安装依赖**（如果有）
+   ```bash
+   npm install
+   ```
+
+3. **在 VS Code 中打开项目**
+   ```bash
+   code .
+   ```
+
+4. **启动调试**
+   - 按 **F5** 键
+   - 或点击"运行和调试"→"运行扩展"
+   - 新的 VS Code 窗口会打开，扩展已自动激活
+
+5. **修改代码后**
+   - 在调试窗口按 **Cmd+R** (Mac) 或 **Ctrl+R** (Windows) 重新加载
+   - 或重新按 F5
+
+> **注意**：`.vscode/launch.json` 和 `.vscode/tasks.json` 是开发调试配置文件，用户安装扩展时不需要这些文件。
 
 ### 使用方法
 
@@ -179,8 +221,43 @@ my-first-vscode-extension/
 │       ├── statusBar.js           # 状态栏显示
 │       └── coinParticleEffect.js  # 金币粒子特效
 └── .vscode/
-    └── launch.json                 # 调试配置
+    ├── launch.json                 # 调试配置
+    └── tasks.json                  # 构建任务配置
 ```
+
+### 开发配置说明
+
+#### `.vscode/` 文件夹
+
+这个文件夹包含开发调试的配置文件：
+
+**launch.json** - 调试启动配置
+- 按 F5 时使用
+- 配置扩展的启动方式
+- 自动生成：按 F5 → 选择 "VS Code Extension Development"
+
+**tasks.json** - 构建任务配置
+- 用于 TypeScript 编译等任务
+- 本项目使用纯 JavaScript，可选
+
+**如何生成这些文件？**
+
+方法 1：使用生成器（推荐新项目）
+```bash
+npm install -g yo generator-code
+yo code
+```
+
+方法 2：VS Code 自动生成
+1. 打开项目
+2. 按 F5
+3. 选择 "VS Code Extension Development"
+4. 自动生成 `.vscode/launch.json`
+
+方法 3：从现有项目复制
+- 从本项目的 `.vscode` 文件夹复制到新项目
+
+> **重要**：这些文件仅用于开发，不会被打包到发布的扩展中（被 `.vscodeignore` 排除）。
 
 ## 🎨 特效预览
 
