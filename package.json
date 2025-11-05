@@ -1,8 +1,8 @@
 {
   "name": "funny-vscode-extension",
-  "displayName": "有趣的VSCode扩展 - 挂机游戏版",
-  "description": "让编程更有趣！挂机游戏 + 酷炫编码特效 + 自定义关键词爆炸效果。边写代码边赚金币，支持波纹特效、粒子动画、抽奖系统。",
-  "version": "1.0.0",
+  "displayName": "Coding Idle Game",
+  "description": "An idle game for coders! Earn coins while coding, with particle effects, keyword explosions, and upgrade systems. Make programming fun and rewarding!",
+  "version": "1.0.1",
   "publisher": "xinzhixu",
   "author": {
     "name": "xuxinzhi007"
@@ -148,7 +148,7 @@
       }
     ],
     "configuration": {
-      "title": "有趣的VSCode扩展",
+      "title": "Coding Idle Game",
       "properties": {
         "funny-vscode-extension.enableRippleEffect": {
           "type": "boolean",

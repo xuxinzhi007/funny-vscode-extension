@@ -1,6 +1,6 @@
-# 有趣的VSCode扩展 - 挂机游戏版
+# Coding Idle Game
 
-一个让编程变得更有趣的 VSCode 扩展！结合了挂机游戏、酷炫特效和趣味功能，让你在编码的同时获得金币奖励。
+A VSCode extension that makes coding more fun! Combines an idle game, cool effects, and entertaining features to earn coins while you code.
 
 ## ✨ 主要功能
 
@@ -241,18 +241,98 @@ for (let i = 0; i < 10; i++) {  // 🔄 ♻️ 🌀 触发循环特效！
 
 ## 📦 打包与发布
 
-### 打包扩展
+### 首次发布配置
 
+1. **安装发布工具**
 ```bash
 npm install -g @vscode/vsce
-vsce package
 ```
 
-### 发布到 Marketplace
+2. **创建 Personal Access Token**
+   - 访问 https://dev.azure.com/
+   - 创建组织（如果没有）
+   - 点击用户头像 → Personal Access Tokens
+   - 创建新 Token：
+     - Name: `vsce-marketplace`
+     - Organization: All accessible organizations
+     - Scopes: **Marketplace → Manage** ✓
+   - 复制生成的 Token（只显示一次！）
 
+3. **登录发布者账号**
+```bash
+vsce login xinzhixu
+# 粘贴您的 Personal Access Token
+```
+
+### 快速发布（推荐）
+
+使用自动化脚本：
+```bash
+./update.sh
+```
+
+脚本会自动：
+- 提示输入新版本号
+- 更新 package.json
+- 打包扩展
+- 发布到 Marketplace
+
+### 手动发布
+
+```bash
+# 1. 修改 package.json 中的 version（如 1.0.1 → 1.0.2）
+
+# 2. 发布（会自动打包并发布）
+vsce publish
+
+# 或者使用自动递增版本
+vsce publish patch   # 1.0.0 → 1.0.1
+vsce publish minor   # 1.0.0 → 1.1.0
+vsce publish major   # 1.0.0 → 2.0.0
+```
+
+### 仅打包（不发布）
+
+```bash
+vsce package
+# 生成 .vsix 文件，可手动上传到 Marketplace
+```
+
+### 换设备发布
+
+如果在新电脑上发布：
+
+1. **克隆项目**
+```bash
+git clone https://github.com/xuxinzhi007/funny-vscode-extension.git
+cd funny-vscode-extension
+```
+
+2. **安装工具**
+```bash
+npm install -g @vscode/vsce
+```
+
+3. **登录发布者**（使用保存的 Token）
+```bash
+vsce login xinzhixu
+# 粘贴您之前保存的 Personal Access Token
+```
+
+4. **发布更新**
 ```bash
 vsce publish
 ```
+
+> 💡 **提示**：建议将 Personal Access Token 保存在密码管理器中，以便在新设备使用。
+
+### 发布验证
+
+发布后访问：
+- **扩展页面**: https://marketplace.visualstudio.com/items?itemName=xinzhixu.funny-vscode-extension
+- **管理页面**: https://marketplace.visualstudio.com/manage/publishers/xinzhixu
+
+通常 5-30 分钟内生效，Cursor 可能需要更长时间（几小时到一天）。
 
 详细信息请参阅 [VSCode 扩展发布指南](https://code.visualstudio.com/api/working-with-extensions/publishing-extension)。
 
