@@ -1,15 +1,50 @@
 {
   "name": "funny-vscode-extension",
-  "displayName": "有趣的VSCode扩展",
-  "description": "一个有趣的VSCode扩展",
-  "version": "0.0.1",
+  "displayName": "有趣的VSCode扩展 - 挂机游戏版",
+  "description": "让编程更有趣！挂机游戏 + 酷炫编码特效 + 自定义关键词爆炸效果。边写代码边赚金币，支持波纹特效、粒子动画、抽奖系统。",
+  "version": "1.0.0",
   "publisher": "user",
+  "author": {
+    "name": "xuxinzhi007"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xuxinzhi007/funny-vscode-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/xuxinzhi007/funny-vscode-extension/issues"
+  },
+  "homepage": "https://github.com/xuxinzhi007/funny-vscode-extension#readme",
+  "keywords": [
+    "game",
+    "idle game",
+    "fun",
+    "entertainment",
+    "effects",
+    "particles",
+    "animation",
+    "coding effects",
+    "gamification",
+    "productivity",
+    "挂机游戏",
+    "编码特效",
+    "趣味",
+    "金币",
+    "特效"
+  ],
   "engines": {
     "vscode": "^1.60.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Visualization"
   ],
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#FFD700",
+    "theme": "light"
+  },
   "activationEvents": [
     "*"
   ],
