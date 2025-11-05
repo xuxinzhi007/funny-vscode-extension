@@ -15,6 +15,6 @@ ls -lh *.vsix
 echo ""
 echo "💡 安装方法："
 echo "   1. 打开 VSCode"
-echo "   2. 按 Cmd+Shift+P"
+echo "   2. 按 Cmd+Shift+P" ｜｜  Ctrl+Shift+P （windows）
 echo "   3. 输入: Extensions: Install from VSIX"
 echo "   4. 选择上面生成的 .vsix 文件"

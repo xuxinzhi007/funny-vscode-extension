@@ -20,7 +20,10 @@
 
 ```bash
 # 安装
-code --install-extension funny-vscode-extension-1.0.0.vsix
+1. code --install-extension funny-vscode-extension-1.0.0.vsix
+2. 按 Cmd+Shift+P" ｜｜  Ctrl+Shift+P （windows）
+   输入: Extensions: Install from VSIX"
+   选择上面生成的 .vsix 文件"
 
 # 卸载
 code --uninstall-extension xinzhixu.funny-vscode-extension
