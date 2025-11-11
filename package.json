@@ -46,7 +46,13 @@
     "theme": "light"
   },
   "activationEvents": [
-    "*"
+    "onView:idleGameView",
+    "onCommand:funny-vscode-extension.showJoke",
+    "onCommand:funny-vscode-extension.showEmoji",
+    "onCommand:funny-vscode-extension.clickCoin",
+    "onCommand:funny-vscode-extension.showSaveInfo",
+    "onCommand:funny-vscode-extension.openSaveFolder",
+    "onCommand:funny-vscode-extension.backupSave"
   ],
   "main": "./extension.js",
   "contributes": {
