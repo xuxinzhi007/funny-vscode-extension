@@ -226,6 +226,64 @@ function activate(context) {
     'Pomodoro config listener'
   );
 
+  // ========== 代码统计系统 ==========
+
+  const { getCodeStatistics } = require('./src/productivity/codeStatistics');
+  
+  // 初始化代码统计
+  if (!gameState.statistics) {
+    gameState.statistics = {
+      today: {
+        date: new Date().toISOString().split('T')[0],
+        linesAdded: 0,
+        linesDeleted: 0,
+        filesModified: 0,
+        saveCount: 0,
+        sessionDuration: 0,
+        coinsEarned: 0
+      },
+      history: [],
+      topFiles: []
+    };
+  }
+
+  const codeStats = getCodeStatistics(gameState, context.globalState);
+  codeStats.loadState(gameState.statistics);
+  codeStats.initialize();
+
+  // 监听代码变化事件
+  eventBus.on('code:changed', (data) => {
+    // 更新游戏状态
+    if (gameState.statistics && gameState.statistics.today) {
+      gameState.statistics.today.linesAdded = data.linesAdded;
+      gameState.statistics.today.linesDeleted = data.linesDeleted;
+      gameState.statistics.today.filesModified = data.filesModified;
+    }
+  });
+
+  // 每日重置检查（每小时检查一次）
+  const dailyResetTimer = resourceManager.registerTimer(() => {
+    const today = new Date().toISOString().split('T')[0];
+    if (gameState.statistics && gameState.statistics.today.date !== today) {
+      codeStats.resetDaily();
+      pomodoroTimer.resetDaily();
+      
+      // 更新游戏状态
+      gameState.statistics.today = {
+        date: today,
+        linesAdded: 0,
+        linesDeleted: 0,
+        filesModified: 0,
+        saveCount: 0,
+        sessionDuration: 0,
+        coinsEarned: 0
+      };
+      
+      saveGameState(context);
+      logger.info('Daily reset completed');
+    }
+  }, 3600000, true, 'Daily reset check'); // 每小时检查
+
   // ========== 创建UI组件 ==========
 
   // 创建笑话状态栏
