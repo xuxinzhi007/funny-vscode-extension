@@ -105,6 +105,127 @@ function activate(context) {
     backupGameSave(context);
   });
 
+  // ========== 番茄钟命令 ==========
+
+  // 初始化番茄钟
+  const { getPomodoroTimer } = require('./src/productivity/pomodoroTimer');
+  const { createPomodoroStatusBar } = require('./src/ui/statusBar/pomodoroStatusBar');
+  
+  const pomodoroTimer = getPomodoroTimer(getGameState());
+  
+  // 从配置加载设置
+  const pomodoroConfig = vscode.workspace.getConfiguration('funny-vscode-extension.pomodoro');
+  pomodoroTimer.updateConfig({
+    workDuration: pomodoroConfig.get('workDuration', 25),
+    breakDuration: pomodoroConfig.get('breakDuration', 5),
+    longBreakDuration: pomodoroConfig.get('longBreakDuration', 15),
+    sessionsUntilLongBreak: pomodoroConfig.get('sessionsUntilLongBreak', 4)
+  });
+
+  // 从游戏状态加载番茄钟数据
+  const gameState = getGameState();
+  if (gameState.pomodoro) {
+    pomodoroTimer.loadState(gameState.pomodoro);
+  } else {
+    // 初始化番茄钟状态
+    gameState.pomodoro = {
+      completedToday: 0,
+      completedTotal: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      lastSessionDate: new Date().toISOString().split('T')[0],
+      settings: {
+        workDuration: 25,
+        shortBreakDuration: 5,
+        longBreakDuration: 15,
+        sessionsUntilLongBreak: 4
+      }
+    };
+  }
+
+  // 创建番茄钟状态栏
+  const pomodoroStatusBar = createPomodoroStatusBar(pomodoroTimer);
+
+  // 开始/暂停番茄钟
+  let togglePomodoroCommand = vscode.commands.registerCommand('funny-vscode-extension.togglePomodoro', function () {
+    const state = pomodoroTimer.getState();
+    
+    if (state.isActive) {
+      // 暂停
+      pomodoroTimer.pause();
+      vscode.window.showInformationMessage('⏸️ 番茄钟已暂停');
+    } else if (state.isPaused) {
+      // 继续
+      pomodoroTimer.resume();
+      vscode.window.showInformationMessage('▶️ 番茄钟继续');
+    } else {
+      // 开始新的工作会话
+      pomodoroTimer.startWork();
+      vscode.window.showInformationMessage('🍅 番茄钟开始！专注工作 25 分钟');
+    }
+  });
+
+  // 停止番茄钟
+  let stopPomodoroCommand = vscode.commands.registerCommand('funny-vscode-extension.stopPomodoro', function () {
+    pomodoroTimer.stop();
+    vscode.window.showInformationMessage('⏹️ 番茄钟已停止');
+  });
+
+  // 开始休息
+  let startPomodoroBreakCommand = vscode.commands.registerCommand('funny-vscode-extension.startPomodoroBreak', function () {
+    const isLongBreak = pomodoroTimer.isLongBreakTime();
+    pomodoroTimer.startBreak(isLongBreak);
+    const duration = isLongBreak ? 15 : 5;
+    vscode.window.showInformationMessage(`☕ 休息时间！放松 ${duration} 分钟`);
+  });
+
+  // 监听番茄钟完成事件
+  eventBus.on('pomodoro:completed', (data) => {
+    if (data.type === 'work') {
+      const isLongBreak = pomodoroTimer.isLongBreakTime();
+      const message = isLongBreak 
+        ? `🎉 完成第 ${data.completedSessions} 个番茄钟！该休息一下了（长休息）`
+        : `✅ 完成第 ${data.completedSessions} 个番茄钟！休息一下吧`;
+      
+      vscode.window.showInformationMessage(message, '开始休息', '继续工作').then(selection => {
+        if (selection === '开始休息') {
+          pomodoroTimer.startBreak(isLongBreak);
+        } else if (selection === '继续工作') {
+          pomodoroTimer.startWork();
+        }
+      });
+      
+      // 保存状态
+      saveGameState(context);
+    } else {
+      vscode.window.showInformationMessage('☕ 休息结束！准备好继续工作了吗？', '开始工作').then(selection => {
+        if (selection === '开始工作') {
+          pomodoroTimer.startWork();
+        }
+      });
+    }
+  });
+
+  // 监听配置变化
+  const pomodoroConfigListener = vscode.workspace.onDidChangeConfiguration(e => {
+    if (e.affectsConfiguration('funny-vscode-extension.pomodoro')) {
+      const config = vscode.workspace.getConfiguration('funny-vscode-extension.pomodoro');
+      pomodoroTimer.updateConfig({
+        workDuration: config.get('workDuration', 25),
+        breakDuration: config.get('breakDuration', 5),
+        longBreakDuration: config.get('longBreakDuration', 15),
+        sessionsUntilLongBreak: config.get('sessionsUntilLongBreak', 4)
+      });
+      logger.info('Pomodoro configuration updated');
+    }
+  });
+
+  resourceManager.registerListener(
+    'pomodoro-config',
+    () => pomodoroConfigListener.dispose(),
+    'Pomodoro config listener'
+  );
+
   // ========== 创建UI组件 ==========
 
   // 创建笑话状态栏
@@ -160,8 +281,12 @@ function activate(context) {
   context.subscriptions.push(showSaveInfoCommand);
   context.subscriptions.push(openSaveFolderCommand);
   context.subscriptions.push(backupSaveCommand);
+  context.subscriptions.push(togglePomodoroCommand);
+  context.subscriptions.push(stopPomodoroCommand);
+  context.subscriptions.push(startPomodoroBreakCommand);
   context.subscriptions.push(jokeStatusBarItem);
   context.subscriptions.push(coinStatusBarItem);
+  context.subscriptions.push(pomodoroStatusBar);
 
   logger.info('Extension activated successfully');
 }

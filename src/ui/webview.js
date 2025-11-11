@@ -1313,6 +1313,7 @@ class IdleGameViewProvider {
         <!-- 标签导航 -->
         <div class="tabs-container">
           <button class="tab active" onclick="switchTab(event, 'home')">🏠 首页</button>
+          <button class="tab" onclick="switchTab(event, 'pomodoro')">🍅 番茄钟</button>
           <button class="tab" onclick="switchTab(event, 'battle')">⚔️ 战斗</button>
           <button class="tab" onclick="switchTab(event, 'upgrade')">🏭 升级</button>
           <button class="tab" onclick="switchTab(event, 'lottery')">🎰 抽奖</button>
