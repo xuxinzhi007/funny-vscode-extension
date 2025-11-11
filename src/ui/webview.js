@@ -232,6 +232,22 @@ class IdleGameViewProvider {
             bsNext.startWave(bsNext.wave);
             saveGameState(this._context);
             break;
+
+          case 'pomodoro_start':
+            vscode.commands.executeCommand('funny-vscode-extension.togglePomodoro');
+            break;
+
+          case 'pomodoro_pause':
+            vscode.commands.executeCommand('funny-vscode-extension.togglePomodoro');
+            break;
+
+          case 'pomodoro_stop':
+            vscode.commands.executeCommand('funny-vscode-extension.stopPomodoro');
+            break;
+
+          case 'pomodoro_break':
+            vscode.commands.executeCommand('funny-vscode-extension.startPomodoroBreak');
+            break;
         }
       }
     );
@@ -241,6 +257,8 @@ class IdleGameViewProvider {
       if (this._view) {
         const gameState = getGameState();
         const battleSystem = getBattleSystem();
+        const { getPomodoroTimer } = require('../productivity/pomodoroTimer');
+        const pomodoroTimer = getPomodoroTimer();
 
         this._view.webview.postMessage({
           command: 'updateGameState',
@@ -252,6 +270,7 @@ class IdleGameViewProvider {
             startTime: gameState.startTime,
             activeBoosts: gameState.activeBoosts,
             upgrades: gameState.upgrades,
+            pomodoroState: pomodoroTimer ? pomodoroTimer.getState() : null,
             battleState: battleSystem.getBattleState()
           }
         });
@@ -1307,6 +1326,261 @@ class IdleGameViewProvider {
             opacity: 0.5;
             padding: 20px 0;
           }
+
+          /* 番茄钟样式 */
+          .pomodoro-main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+          }
+          .pomodoro-timer-display {
+            margin-bottom: 20px;
+          }
+          .timer-circle {
+            position: relative;
+            width: 200px;
+            height: 200px;
+          }
+          .timer-svg {
+            transform: rotate(-90deg);
+          }
+          .timer-bg {
+            fill: none;
+            stroke: var(--vscode-input-background);
+            stroke-width: 8;
+          }
+          .timer-progress {
+            fill: none;
+            stroke: #FFD700;
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-dasharray: 565.48;
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 1s linear;
+          }
+          .timer-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+          }
+          .timer-time {
+            font-size: 36px;
+            font-weight: bold;
+            color: var(--vscode-foreground);
+            margin-bottom: 8px;
+          }
+          .timer-label {
+            font-size: 14px;
+            opacity: 0.7;
+          }
+          .pomodoro-controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 20px;
+          }
+          .pomodoro-btn {
+            padding: 10px 20px;
+            font-size: 13px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+          .pomodoro-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+          }
+          .pomodoro-btn.start {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+          }
+          .pomodoro-btn.pause {
+            background: linear-gradient(135deg, #ff9800 0%, #e68900 100%);
+            color: white;
+          }
+          .pomodoro-btn.stop {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+            color: white;
+          }
+          .pomodoro-btn.break {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+          }
+          .pomodoro-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+          }
+          .pomodoro-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+          }
+          .stat-card {
+            background: var(--vscode-input-background);
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+          .stat-icon {
+            font-size: 28px;
+          }
+          .stat-info {
+            flex: 1;
+          }
+          .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #FFD700;
+          }
+          .stat-name {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 4px;
+          }
+          .pomodoro-info {
+            background: var(--vscode-input-background);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 3px solid #FFD700;
+          }
+          .info-title {
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 10px;
+          }
+          .info-content p {
+            font-size: 11px;
+            margin: 6px 0;
+            opacity: 0.9;
+          }
+          @media (max-width: 400px) {
+            .pomodoro-stats {
+              grid-template-columns: 1fr;
+            }
+            .timer-circle {
+              width: 160px;
+              height: 160px;
+            }
+            .timer-time {
+              font-size: 28px;
+            }
+          }
+
+          /* 紧凑模式 */
+          body.compact-mode {
+            padding: 4px;
+            font-size: 10px;
+          }
+          body.compact-mode .tabs-container {
+            padding: 0 4px;
+            margin: -4px -4px 4px -4px;
+          }
+          body.compact-mode .tab {
+            padding: 4px 8px;
+            font-size: 9px;
+          }
+          body.compact-mode .stats-compact {
+            padding: 4px 6px;
+            margin-bottom: 4px;
+          }
+          body.compact-mode .coins-compact {
+            font-size: 12px;
+          }
+          body.compact-mode .rate-compact,
+          body.compact-mode .battle-gold-compact,
+          body.compact-mode .battle-level-compact {
+            font-size: 9px;
+          }
+          body.compact-mode .section {
+            margin-bottom: 6px;
+          }
+          body.compact-mode .title {
+            font-size: 9px;
+            margin-bottom: 4px;
+          }
+          body.compact-mode .item {
+            padding: 4px;
+            margin-bottom: 4px;
+          }
+          body.compact-mode .item-name {
+            font-size: 9px;
+          }
+          body.compact-mode .btn {
+            padding: 2px;
+            font-size: 8px;
+          }
+          body.compact-mode .pomodoro-timer-display {
+            margin-bottom: 10px;
+          }
+          body.compact-mode .timer-circle {
+            width: 120px;
+            height: 120px;
+          }
+          body.compact-mode .timer-time {
+            font-size: 20px;
+          }
+          body.compact-mode .timer-label {
+            font-size: 10px;
+          }
+          body.compact-mode .pomodoro-btn {
+            padding: 6px 12px;
+            font-size: 10px;
+          }
+          body.compact-mode .stat-card {
+            padding: 8px;
+          }
+          body.compact-mode .stat-icon {
+            font-size: 20px;
+          }
+          body.compact-mode .stat-value {
+            font-size: 16px;
+          }
+          body.compact-mode .stat-name {
+            font-size: 9px;
+          }
+
+          /* 隐蔽模式 - 低调配色 */
+          body.stealth-mode {
+            background: #1e1e1e;
+          }
+          body.stealth-mode .stats-compact,
+          body.stealth-mode .item,
+          body.stealth-mode .stat-card,
+          body.stealth-mode .pomodoro-info {
+            background: #252526;
+            border-left-color: #3e3e42;
+          }
+          body.stealth-mode .coins-compact,
+          body.stealth-mode .stat-value {
+            color: #cccccc;
+          }
+          body.stealth-mode .rate-compact {
+            color: #b5cea8;
+          }
+          body.stealth-mode .timer-progress {
+            stroke: #6a9955;
+          }
+          body.stealth-mode .pomodoro-btn.start {
+            background: linear-gradient(135deg, #4e7a4e 0%, #3d5f3d 100%);
+          }
+          body.stealth-mode .pomodoro-btn.pause {
+            background: linear-gradient(135deg, #8b6914 0%, #6b5010 100%);
+          }
+          body.stealth-mode .pomodoro-btn.stop {
+            background: linear-gradient(135deg, #7a4e4e 0%, #5f3d3d 100%);
+          }
+          body.stealth-mode .pomodoro-btn.break {
+            background: linear-gradient(135deg, #4e6a7a 0%, #3d5260 100%);
+          }
         </style>
       </head>
       <body>
@@ -1370,6 +1644,84 @@ class IdleGameViewProvider {
               <button class="action-btn" onclick="clickCoin()">💰 点击+1</button>
               <button class="action-btn" onclick="switchTab(event, 'battle')">⚔️ 战斗详情</button>
               <button class="action-btn" onclick="switchTab(event, 'upgrade')">🏭 升级</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 番茄钟标签 -->
+        <div class="tab-content" id="tab-pomodoro">
+          <div class="section">
+            <div class="title">
+              <span>🍅 番茄钟工作法</span>
+            </div>
+            
+            <!-- 番茄钟主显示 -->
+            <div class="pomodoro-main">
+              <div class="pomodoro-timer-display">
+                <div class="timer-circle">
+                  <svg class="timer-svg" viewBox="0 0 200 200">
+                    <circle class="timer-bg" cx="100" cy="100" r="90"></circle>
+                    <circle class="timer-progress" id="pomodoroProgress" cx="100" cy="100" r="90"></circle>
+                  </svg>
+                  <div class="timer-text">
+                    <div class="timer-time" id="pomodoroTime">25:00</div>
+                    <div class="timer-label" id="pomodoroLabel">准备开始</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 控制按钮 -->
+              <div class="pomodoro-controls">
+                <button class="pomodoro-btn start" id="pomodoroStartBtn" onclick="startPomodoro()">
+                  ▶️ 开始工作
+                </button>
+                <button class="pomodoro-btn pause" id="pomodoroPauseBtn" onclick="pausePomodoro()" style="display:none;">
+                  ⏸️ 暂停
+                </button>
+                <button class="pomodoro-btn stop" id="pomodoroStopBtn" onclick="stopPomodoro()" disabled>
+                  ⏹️ 停止
+                </button>
+                <button class="pomodoro-btn break" id="pomodoroBreakBtn" onclick="startPomodoroBreak()">
+                  ☕ 开始休息
+                </button>
+              </div>
+            </div>
+
+            <!-- 统计信息 -->
+            <div class="pomodoro-stats">
+              <div class="stat-card">
+                <div class="stat-icon">📅</div>
+                <div class="stat-info">
+                  <div class="stat-value" id="pomodoroToday">0</div>
+                  <div class="stat-name">今日完成</div>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">🏆</div>
+                <div class="stat-info">
+                  <div class="stat-value" id="pomodoroTotal">0</div>
+                  <div class="stat-name">总计完成</div>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">🔥</div>
+                <div class="stat-info">
+                  <div class="stat-value" id="pomodoroStreak">0</div>
+                  <div class="stat-name">连续完成</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 说明 -->
+            <div class="pomodoro-info">
+              <div class="info-title">💡 番茄钟工作法</div>
+              <div class="info-content">
+                <p>• 工作 25 分钟，专注完成任务</p>
+                <p>• 休息 5 分钟，放松大脑</p>
+                <p>• 每 4 个番茄钟后，休息 15 分钟</p>
+                <p>• 完成工作会话获得 50 金币奖励</p>
+                <p>• 完成 4 个会话额外获得 200 金币</p>
+              </div>
             </div>
           </div>
         </div>
@@ -1522,6 +1874,25 @@ class IdleGameViewProvider {
           </div>
           <div class="section">
             <div class="title">
+              <span>🕶️ 摸鱼模式</span>
+            </div>
+            <div class="item">
+              <div class="item-name">紧凑显示</div>
+              <div class="item-detail">缩小界面，更隐蔽更低调</div>
+              <button class="btn" id="compactModeBtn" onclick="toggleCompactMode()">
+                ❌ 已禁用
+              </button>
+            </div>
+            <div class="item">
+              <div class="item-name">低调配色</div>
+              <div class="item-detail">使用更低调的颜色，不易被发现</div>
+              <button class="btn" id="stealthModeBtn" onclick="toggleStealthMode()">
+                ❌ 已禁用
+              </button>
+            </div>
+          </div>
+          <div class="section">
+            <div class="title">
               <span>🎨 视觉特效</span>
             </div>
             <div class="item">
@@ -1631,6 +2002,10 @@ class IdleGameViewProvider {
               // 更新战斗UI
               if (message.data.battleState) {
                 updateBattleUI(message.data.battleState);
+              }
+              // 更新番茄钟UI
+              if (message.data.pomodoroState) {
+                updatePomodoroUI(message.data.pomodoroState);
               }
             } else if (message.command === 'upgradeSuccess') {
               handleUpgradeSuccess(message);
@@ -1987,6 +2362,164 @@ class IdleGameViewProvider {
               command: 'editCategory',
               category: category
             });
+          }
+
+          // ========== 番茄钟函数 ==========
+
+          let pomodoroState = {
+            isActive: false,
+            isPaused: false,
+            remainingSeconds: 1500,
+            totalSeconds: 1500
+          };
+
+          function startPomodoro() {
+            vscode.postMessage({ command: 'pomodoro_start' });
+          }
+
+          function pausePomodoro() {
+            vscode.postMessage({ command: 'pomodoro_pause' });
+          }
+
+          function stopPomodoro() {
+            vscode.postMessage({ command: 'pomodoro_stop' });
+          }
+
+          function startPomodoroBreak() {
+            vscode.postMessage({ command: 'pomodoro_break' });
+          }
+
+          // ========== 摸鱼模式函数 ==========
+
+          let compactMode = localStorage.getItem('compactMode') === 'true';
+          let stealthMode = localStorage.getItem('stealthMode') === 'true';
+
+          // 应用保存的模式
+          if (compactMode) {
+            document.body.classList.add('compact-mode');
+            const btn = document.getElementById('compactModeBtn');
+            if (btn) btn.textContent = '✅ 已启用';
+          }
+          if (stealthMode) {
+            document.body.classList.add('stealth-mode');
+            const btn = document.getElementById('stealthModeBtn');
+            if (btn) btn.textContent = '✅ 已启用';
+          }
+
+          function toggleCompactMode() {
+            compactMode = !compactMode;
+            localStorage.setItem('compactMode', compactMode);
+            
+            if (compactMode) {
+              document.body.classList.add('compact-mode');
+            } else {
+              document.body.classList.remove('compact-mode');
+            }
+
+            const btn = document.getElementById('compactModeBtn');
+            if (btn) {
+              btn.textContent = compactMode ? '✅ 已启用' : '❌ 已禁用';
+            }
+          }
+
+          function toggleStealthMode() {
+            stealthMode = !stealthMode;
+            localStorage.setItem('stealthMode', stealthMode);
+            
+            if (stealthMode) {
+              document.body.classList.add('stealth-mode');
+            } else {
+              document.body.classList.remove('stealth-mode');
+            }
+
+            const btn = document.getElementById('stealthModeBtn');
+            if (btn) {
+              btn.textContent = stealthMode ? '✅ 已启用' : '❌ 已禁用';
+            }
+          }
+
+          // 快捷键：Ctrl+Shift+H 快速切换隐蔽模式
+          document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key === 'H') {
+              toggleStealthMode();
+              toggleCompactMode();
+            }
+          });
+
+          function updatePomodoroUI(state) {
+            if (!state) return;
+
+            pomodoroState = state;
+
+            // 更新时间显示
+            const minutes = Math.floor(state.remainingSeconds / 60);
+            const seconds = state.remainingSeconds % 60;
+            const timeStr = minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+            
+            const timeEl = document.getElementById('pomodoroTime');
+            if (timeEl) timeEl.textContent = timeStr;
+
+            // 更新标签
+            const labelEl = document.getElementById('pomodoroLabel');
+            if (labelEl) {
+              if (state.isActive) {
+                labelEl.textContent = state.sessionType === 'work' ? '工作中' : '休息中';
+              } else if (state.isPaused) {
+                labelEl.textContent = '已暂停';
+              } else {
+                labelEl.textContent = '准备开始';
+              }
+            }
+
+            // 更新进度圆环
+            const progressEl = document.getElementById('pomodoroProgress');
+            if (progressEl && state.totalSeconds > 0) {
+              const progress = state.progress || 0;
+              const circumference = 565.48;
+              const offset = circumference - (progress / 100) * circumference;
+              progressEl.style.strokeDashoffset = offset;
+              
+              // 根据类型改变颜色
+              if (state.sessionType === 'work') {
+                progressEl.style.stroke = '#FFD700';
+              } else {
+                progressEl.style.stroke = '#2196F3';
+              }
+            }
+
+            // 更新按钮状态
+            const startBtn = document.getElementById('pomodoroStartBtn');
+            const pauseBtn = document.getElementById('pomodoroPauseBtn');
+            const stopBtn = document.getElementById('pomodoroStopBtn');
+
+            if (state.isActive) {
+              if (startBtn) startBtn.style.display = 'none';
+              if (pauseBtn) pauseBtn.style.display = 'inline-block';
+              if (stopBtn) stopBtn.disabled = false;
+            } else if (state.isPaused) {
+              if (startBtn) {
+                startBtn.style.display = 'inline-block';
+                startBtn.textContent = '▶️ 继续';
+              }
+              if (pauseBtn) pauseBtn.style.display = 'none';
+              if (stopBtn) stopBtn.disabled = false;
+            } else {
+              if (startBtn) {
+                startBtn.style.display = 'inline-block';
+                startBtn.textContent = '▶️ 开始工作';
+              }
+              if (pauseBtn) pauseBtn.style.display = 'none';
+              if (stopBtn) stopBtn.disabled = true;
+            }
+
+            // 更新统计
+            const todayEl = document.getElementById('pomodoroToday');
+            const totalEl = document.getElementById('pomodoroTotal');
+            const streakEl = document.getElementById('pomodoroStreak');
+
+            if (todayEl) todayEl.textContent = state.completedToday || 0;
+            if (totalEl) totalEl.textContent = state.completedSessions || 0;
+            if (streakEl) streakEl.textContent = state.currentStreak || 0;
           }
 
           // ========== 战斗系统函数 ==========
