@@ -188,6 +188,12 @@
           "default": false,
           "description": "启用编码特效（金币粒子特效）"
         },
+        "funny-vscode-extension.effectStyle": {
+          "type": "string",
+          "enum": ["classic", "enhanced"],
+          "default": "enhanced",
+          "description": "特效样式：classic=表情符号，enhanced=CSS动画"
+        },
         "funny-vscode-extension.keywordCategories": {
           "type": "object",
           "default": {

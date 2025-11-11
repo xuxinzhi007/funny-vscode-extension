@@ -362,10 +362,22 @@ function registerLazyModules(activationManager, context) {
       logger.info('Loading UI module...');
       // 暂时使用原始的 webview.js，保持完整功能
       const IdleGameViewProvider = require('./src/ui/webview');
-      const { initCoinParticleEffect } = require('./src/ui/coinParticleEffect');
+      
+      // 根据配置选择特效系统
+      const config = vscode.workspace.getConfiguration('funny-vscode-extension');
+      const effectStyle = config.get('effectStyle', 'enhanced');
+      
+      if (effectStyle === 'enhanced') {
+        const { initEnhancedCodeEffect } = require('./src/ui/enhancedCodeEffect');
+        initEnhancedCodeEffect(context);
+        logger.info('Using enhanced CSS-based effects');
+      } else {
+        const { initCoinParticleEffect } = require('./src/ui/coinParticleEffect');
+        initCoinParticleEffect(context);
+        logger.info('Using classic emoji effects');
+      }
       
       const webviewProvider = new IdleGameViewProvider(context);
-      initCoinParticleEffect(context);
       
       return { webviewProvider };
     },
