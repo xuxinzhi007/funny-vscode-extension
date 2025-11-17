@@ -267,6 +267,20 @@ function activate(context) {
     }
   });
 
+  // 监听金币获得事件（关键词奖励）
+  eventBus.on('coins:earned', (data) => {
+    if (data.source === 'keyword') {
+      // 显示通知（可选）
+      // vscode.window.showInformationMessage(`💰 触发关键词 "${data.keyword}" 获得 ${data.amount} 金币！`);
+      
+      // 更新状态栏
+      updateStatusBar();
+      
+      // 保存游戏状态
+      saveGameState(context);
+    }
+  });
+
   // 每日重置检查（每小时检查一次）
   const dailyResetTimer = resourceManager.registerTimer(() => {
     const today = new Date().toISOString().split('T')[0];

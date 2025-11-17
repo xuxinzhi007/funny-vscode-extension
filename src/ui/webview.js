@@ -1609,64 +1609,45 @@ class IdleGameViewProvider {
       <body>
         <!-- 标签导航 -->
         <div class="tabs-container">
-          <button class="tab active" onclick="switchTab(event, 'home')">🏠 首页</button>
+          <button class="tab active" onclick="switchTab(event, 'home')">💰 游戏</button>
           <button class="tab" onclick="switchTab(event, 'pomodoro')">🍅 番茄钟</button>
-          <button class="tab" onclick="switchTab(event, 'battle')">⚔️ 战斗</button>
-          <button class="tab" onclick="switchTab(event, 'upgrade')">🏭 升级</button>
-          <button class="tab" onclick="switchTab(event, 'lottery')">🎰 抽奖</button>
           <button class="tab" onclick="switchTab(event, 'achievement')">🏆 成就</button>
           <button class="tab" onclick="switchTab(event, 'settings')">⚙️ 设置</button>
         </div>
 
-        <!-- 首页标签 -->
+        <!-- 游戏标签 -->
         <div class="tab-content active" id="tab-home">
-          <!-- 顶部金币信息栏 -->
-          <div class="stats-compact">
-            <div class="stat-group">
-              <div class="coins-compact">💰 ${formatNumber(gameState.coins)}</div>
-              <div class="rate-compact">⚡ +${formatNumber(gameState.coinsPerSecond)}/s</div>
+          <!-- 状态信息流 -->
+          <div style="background: var(--vscode-input-background); padding: 8px; margin-bottom: 8px; border-radius: 3px; font-family: monospace; font-size: 11px; line-height: 1.6;">
+            <div style="font-weight: bold; margin-bottom: 6px; color: #FFD700;">【编码状态】</div>
+            <div>金币：${formatNumber(gameState.coins)}</div>
+            <div>总赚取：${formatNumber(gameState.totalCoinsEarned)}</div>
+            <div>成就：${gameState.achievements.length}/${getAchievements().length}</div>
+          </div>
+
+          <!-- 关键词奖励说明 -->
+          <div style="background: var(--vscode-input-background); padding: 8px; margin-bottom: 8px; border-radius: 3px; font-family: monospace; font-size: 10px;">
+            <div style="font-weight: bold; margin-bottom: 6px;">【关键词奖励】</div>
+            <div style="line-height: 1.6; opacity: 0.8;">
+              <div>💥 函数 (function, def, func) → +5 金币</div>
+              <div>💎 类 (class, interface, struct) → +8 金币</div>
+              <div>🔄 循环 (for, while, map) → +3 金币</div>
+              <div>❓ 条件 (if, else, switch) → +2 金币</div>
+              <div>📦 变量 (const, let, var) → +1 金币</div>
+              <div>↩️ 返回 (return, yield) → +2 金币</div>
             </div>
-            <div class="stat-group">
-              <div class="battle-gold-compact">⚔️ ${gameState.battle.gold} 金币</div>
-              <div class="battle-level-compact">👤 Lv.${gameState.battle.playerLevel}</div>
+            <div style="margin-top: 6px; font-size: 9px; opacity: 0.6;">
+              💡 在编辑器中输入这些关键词即可获得金币奖励
             </div>
           </div>
 
-          <!-- 战斗区域 -->
-          <div class="home-battle-section">
-            <div class="battle-header">
-              <span class="battle-wave-info">⚔️ 第 <span id="homeWave">${gameState.battle.wave}</span> 波</span>
-              <button class="quick-btn start" id="homeStartBtn" onclick="startBattle()">▶️</button>
-              <button class="quick-btn stop" id="homeStopBtn" onclick="stopBattle()" disabled>⏸️</button>
-              <button class="quick-btn next" id="homeNextBtn" onclick="nextWave()" disabled>⏭️</button>
-            </div>
-
-            <!-- 战场画布 -->
-            <div class="battlefield-home">
-              <canvas id="battleCanvas" width="300" height="200"></canvas>
-            </div>
-
-            <!-- 玩家状态条 -->
-            <div class="player-stats-compact">
-              <div class="stat-bar-compact">
-                <div class="stat-label-compact">❤️</div>
-                <div class="progress-bar-compact">
-                  <div class="progress" id="homePlayerHealthBar" style="width: 100%; background: #ff4444;"></div>
-                </div>
-                <div class="stat-value-compact" id="homePlayerHealthText">100/100</div>
-              </div>
-              <div class="stat-row-compact">
-                <span>⚔️ <span id="homePlayerAttack">${gameState.battle.playerStats.attack}</span></span>
-                <span>🛡️ <span id="homePlayerDefense">${gameState.battle.playerStats.defense}</span></span>
-                <span>💥 <span id="homePlayerCritRate">${(gameState.battle.playerStats.critRate * 100).toFixed(0)}%</span></span>
-              </div>
-            </div>
-
-            <!-- 快速操作 -->
-            <div class="quick-actions">
-              <button class="action-btn" onclick="clickCoin()">💰 点击+1</button>
-              <button class="action-btn" onclick="switchTab(event, 'battle')">⚔️ 战斗详情</button>
-              <button class="action-btn" onclick="switchTab(event, 'upgrade')">🏭 升级</button>
+          <!-- 编码日志 -->
+          <div style="background: var(--vscode-input-background); padding: 8px; border-radius: 3px; font-family: monospace; font-size: 10px;">
+            <div style="font-weight: bold; margin-bottom: 6px;">【编码日志】</div>
+            <div id="eventLog" style="max-height: 200px; overflow-y: auto; line-height: 1.5; opacity: 0.8;">
+              <div>> 编码挂机游戏已启动</div>
+              <div>> 开始编码，触发关键词即可获得金币</div>
+              <div>> 提示：输入 function、class 等关键词获得奖励</div>
             </div>
           </div>
         </div>
@@ -1749,131 +1730,9 @@ class IdleGameViewProvider {
           </div>
         </div>
 
-        <!-- 战斗标签 -->
-        <div class="tab-content" id="tab-battle">
-          <div class="section">
-            <div class="title">
-              <span>⚔️ 战斗场地 - 第 <span id="currentWave">${gameState.battle.wave}</span> 波</span>
-            </div>
 
-            <!-- 战场画布 -->
-            <div class="battlefield">
-              <canvas id="battleCanvas" width="300" height="250"></canvas>
-            </div>
 
-            <!-- 战斗控制 -->
-            <div class="battle-controls">
-              <button class="battle-btn start" id="startBattleBtn" onclick="startBattle()">
-                ▶️ 开始战斗
-              </button>
-              <button class="battle-btn stop" id="stopBattleBtn" onclick="stopBattle()" disabled>
-                ⏸️ 停止
-              </button>
-              <button class="battle-btn next" id="nextWaveBtn" onclick="nextWave()" disabled>
-                ⏭️ 下一波
-              </button>
-            </div>
 
-            <!-- 玩家状态 -->
-            <div class="player-stats">
-              <div class="stat-title">👤 角色状态 (Lv.<span id="playerLevel">${gameState.battle.playerLevel}</span>)</div>
-              <div class="stat-bar">
-                <div class="stat-label">❤️ 生命值</div>
-                <div class="progress-bar">
-                  <div class="progress" id="playerHealthBar" style="width: 100%; background: #ff4444;"></div>
-                </div>
-                <div class="stat-value" id="playerHealthText">100/100</div>
-              </div>
-              <div class="stat-row">
-                <span>⚔️ 攻击: <span id="playerAttack">${gameState.battle.playerStats.attack}</span></span>
-                <span>🛡️ 防御: <span id="playerDefense">${gameState.battle.playerStats.defense}</span></span>
-              </div>
-              <div class="stat-row">
-                <span>💥 暴击率: <span id="playerCritRate">${(gameState.battle.playerStats.critRate * 100).toFixed(0)}%</span></span>
-                <span>💢 暴击伤害: <span id="playerCritDmg">${gameState.battle.playerStats.critDamage.toFixed(1)}x</span></span>
-              </div>
-              <div class="stat-row">
-                <span>💚 生命恢复: <span id="playerRegen">${gameState.battle.playerStats.healthRegen}/s</span></span>
-                <span>💰 金币: <span id="battleGold">${gameState.battle.gold}</span></span>
-              </div>
-            </div>
-
-            <!-- 属性升级 -->
-            <div class="upgrade-section">
-              <div class="stat-title">📈 属性升级</div>
-              <div class="upgrade-grid">
-                <button class="upgrade-item" onclick="upgradeAttribute('health', 50)">
-                  <div class="upgrade-name">❤️ 生命值 +20</div>
-                  <div class="upgrade-cost">💰 50</div>
-                </button>
-                <button class="upgrade-item" onclick="upgradeAttribute('attack', 80)">
-                  <div class="upgrade-name">⚔️ 攻击力 +5</div>
-                  <div class="upgrade-cost">💰 80</div>
-                </button>
-                <button class="upgrade-item" onclick="upgradeAttribute('defense', 60)">
-                  <div class="upgrade-name">🛡️ 防御力 +2</div>
-                  <div class="upgrade-cost">💰 60</div>
-                </button>
-                <button class="upgrade-item" onclick="upgradeAttribute('critRate', 100)">
-                  <div class="upgrade-name">💥 暴击率 +5%</div>
-                  <div class="upgrade-cost">💰 100</div>
-                </button>
-                <button class="upgrade-item" onclick="upgradeAttribute('critDamage', 120)">
-                  <div class="upgrade-name">💢 暴击伤害 +0.2x</div>
-                  <div class="upgrade-cost">💰 120</div>
-                </button>
-                <button class="upgrade-item" onclick="upgradeAttribute('healthRegen', 70)">
-                  <div class="upgrade-name">💚 生命恢复 +1/s</div>
-                  <div class="upgrade-cost">💰 70</div>
-                </button>
-              </div>
-            </div>
-
-            <!-- 战斗日志 -->
-            <div class="battle-log">
-              <div class="stat-title">📜 战斗日志</div>
-              <div class="log-content" id="battleLog">
-                <div class="log-empty">等待战斗开始...</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 升级标签 -->
-        <div class="tab-content" id="tab-upgrade">
-          <div class="section">
-            <div class="title">
-              <span>🏭 自动化升级</span>
-            </div>
-            ${upgradesList}
-          </div>
-        </div>
-
-        <!-- 抽奖标签 -->
-        <div class="tab-content" id="tab-lottery">
-          <div class="section">
-            <div class="title">
-              <span>🎰 幸运转盘</span>
-            </div>
-            <div class="lottery-container">
-              <div class="wheel-pointer"></div>
-              <div class="wheel-wrapper">
-                <div class="wheel" id="wheel">
-                  ${lotteryPrizes.map((prize, index) => {
-                    const angle = (360 / lotteryPrizes.length) * index;
-                    return `<div class="prize-sector" style="transform: rotate(${angle}deg); background: ${prize.color};">${prize.name}</div>`;
-                  }).join('')}
-                </div>
-                <div class="wheel-center">GO</div>
-              </div>
-            </div>
-            <button class="lottery-btn" id="lotteryBtn" onclick="startLottery()"
-                    ${gameState.coins < lotteryPrices.normal ? 'disabled' : ''}>
-              🎰 抽奖一次 (${lotteryPrices.normal}金币)
-            </button>
-            <div class="lottery-info">奖励包括金币、加速道具、折扣券等</div>
-          </div>
-        </div>
 
         <!-- 成就标签 -->
         <div class="tab-content" id="tab-achievement">
@@ -1965,17 +1824,17 @@ class IdleGameViewProvider {
               </div>
 
               ${Object.entries(keywordCategories).map(([category, config]) => {
-                const categoryNames = {
-                  functions: '💥 函数关键词',
-                  classes: '💎 类关键词',
-                  loops: '🔄 循环关键词',
-                  conditions: '❓ 条件关键词',
-                  variables: '📦 变量关键词',
-                  returns: '↩️ 返回关键词'
-                };
-                const categoryName = categoryNames[category] || category;
+      const categoryNames = {
+        functions: '💥 函数关键词',
+        classes: '💎 类关键词',
+        loops: '🔄 循环关键词',
+        conditions: '❓ 条件关键词',
+        variables: '📦 变量关键词',
+        returns: '↩️ 返回关键词'
+      };
+      const categoryName = categoryNames[category] || category;
 
-                return `
+      return `
                   <div class="config-category">
                     <div class="config-category-title">
                       <span>${categoryName}</span>
@@ -1999,7 +1858,7 @@ class IdleGameViewProvider {
                     </div>
                   </div>
                 `;
-              }).join('')}
+    }).join('')}
 
               <div style="margin-top: 16px; padding: 10px; background: var(--vscode-input-background); border-radius: 4px; font-size: 10px; opacity: 0.7;">
                 <strong>💡 提示</strong>
@@ -2167,6 +2026,24 @@ class IdleGameViewProvider {
 
           function clickCoin() {
             vscode.postMessage({ command: 'clickCoin' });
+            addEventLog('> 手动点击获得 1 金币');
+          }
+
+          function buyUpgrade(upgradeKey) {
+            vscode.postMessage({ command: 'buyUpgrade', upgradeKey: upgradeKey });
+          }
+
+          function addEventLog(message) {
+            const log = document.getElementById('eventLog');
+            if (log) {
+              const entry = document.createElement('div');
+              entry.textContent = message;
+              log.insertBefore(entry, log.firstChild);
+              // 限制日志条数
+              while (log.children.length > 10) {
+                log.removeChild(log.lastChild);
+              }
+            }
           }
 
           function showSaveInfo() {
@@ -2308,22 +2185,19 @@ class IdleGameViewProvider {
             isSpinning = true;
 
             const btn = document.getElementById('lotteryBtn');
-            const wheel = document.getElementById('wheel');
-
             btn.disabled = true;
             btn.textContent = '抽奖中...';
+
+            addEventLog('> 🎰 开始抽奖...');
 
             // 发送抽奖请求
             vscode.postMessage({ command: 'lottery' });
 
-            // 转盘旋转动画
-            wheel.classList.add('spinning');
-
             // 4秒后重置
             setTimeout(() => {
-              wheel.classList.remove('spinning');
               isSpinning = false;
-              btn.textContent = '🎰 抽奖一次 (' + ${lotteryPrices.normal} + '金币)';
+              btn.disabled = false;
+              btn.textContent = '🎰 抽奖一次 (100 金币)';
             }, 4000);
           }
 
@@ -2593,6 +2467,7 @@ class IdleGameViewProvider {
           // 开始战斗
           function startBattle() {
             vscode.postMessage({ command: 'battle_start' });
+            addEventLog('> ⚔️ 战斗开始！');
 
             // 更新所有开始按钮
             const startBtns = ['startBattleBtn', 'homeStartBtn'];

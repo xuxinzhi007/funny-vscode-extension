@@ -250,7 +250,7 @@ function getCategoryColor(category) {
  * 触发关键词爆炸效果
  */
 function triggerKeywordExplosion(editor, position, keywordData) {
-  const { keyword, color, symbols } = keywordData;
+  const { keyword, color, symbols, category } = keywordData;
 
   // 创建装饰器
   const decorationType = vscode.window.createTextEditorDecorationType({
@@ -279,10 +279,50 @@ function triggerKeywordExplosion(editor, position, keywordData) {
   // 5. 文字破碎
   createTextShatter(editor, position, keyword, color);
 
+  // 6. 给予金币奖励
+  giveKeywordReward(category, keyword);
+
   // 清理装饰器
   setTimeout(() => {
     decorationType.dispose();
   }, 1000);
+}
+
+/**
+ * 给予关键词奖励
+ */
+function giveKeywordReward(category, keyword) {
+  const { getGameState } = require('../game/gameState');
+  const { checkAchievements } = require('../game/achievements');
+  const { getEventBus } = require('../core/eventBus');
+  
+  const gameState = getGameState();
+  const eventBus = getEventBus();
+  
+  // 根据类别给予不同金币奖励
+  const rewards = {
+    functions: 5,
+    classes: 8,
+    loops: 3,
+    conditions: 2,
+    variables: 1,
+    returns: 2
+  };
+  
+  const reward = rewards[category] || 1;
+  gameState.coins += reward;
+  gameState.totalCoinsEarned += reward;
+  
+  // 触发事件
+  eventBus.emit('coins:earned', { 
+    amount: reward, 
+    source: 'keyword',
+    keyword: keyword,
+    category: category
+  });
+  
+  // 检查成就
+  checkAchievements();
 }
 
 /**
