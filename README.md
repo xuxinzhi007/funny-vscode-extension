@@ -84,6 +84,39 @@ A VSCode extension that makes coding more fun! Combines an idle game, cool effec
 - **打开存档文件夹**：快速访问存档位置
 - **手动备份**：创建存档备份以防数据丢失
 
+### 🌐 翻译功能（新增）
+
+让编码和国际化开发更高效：
+
+- **选中即翻译**：选中文本后快速翻译（支持中英互译）
+- **变量名建议**：输入中文自动生成符合规范的英文变量名
+- **多种命名风格**：支持 camelCase、PascalCase、snake_case、UPPER_SNAKE_CASE、kebab-case
+- **智能变体**：自动生成常见前缀（get/set/is/has）和后缀（List/Map/Count）
+- **悬浮显示**：翻译结果直接在编辑器中显示，无需跳转
+- **可配置API**：支持百度翻译和自定义翻译API
+- **智能缓存**：相同内容不重复请求，提升速度
+
+**配置方式：**
+1. 点击左侧 **⭐ 挂机游戏** 图标打开侧边栏
+2. 点击顶部 **⚙️ 设置** 标签
+3. 找到 **🌐 翻译功能** 区域
+4. 点击 **⚙️ 配置翻译API** 按钮
+5. 填入百度翻译 AppID 和密钥（[免费申请](https://fanyi-api.baidu.com/doc/21)）
+
+**使用方式：**
+1. **双击**选中任意文字
+2. **右键**点击
+3. 选择 **🌐 翻译选中文本** 或 **💡 变量名建议**
+4. 点击"复制"或"替换"
+
+**使用场景：**
+- 阅读英文注释和文档
+- 编写国际化（i18n）文案
+- 快速生成规范的变量名
+- 中英文代码注释互译
+
+详细使用说明：[快速上手](TRANSLATION_QUICK_START.md) | [完整指南](TRANSLATION_GUIDE.md) | [配置说明](TRANSLATION_SETUP.md)
+
 ### 😄 趣味功能
 
 - **随机笑话**：显示编程相关的幽默笑话
@@ -175,6 +208,8 @@ xinzhixu.funny-vscode-extension
 | `Cmd+Alt+J` / `Ctrl+Alt+J` | 显示随机笑话 |
 | `Cmd+Alt+E` / `Ctrl+Alt+E` | 插入随机表情 |
 | `Cmd+Alt+C` / `Ctrl+Alt+C` | 手动获得金币 |
+| `Cmd+Alt+T` / `Ctrl+Alt+T` | 翻译选中文本 |
+| `Cmd+Alt+V` / `Ctrl+Alt+V` | 变量名建议 |
 
 ## ⚙️ 配置选项
 
@@ -199,7 +234,13 @@ xinzhixu.funny-vscode-extension
       "symbols": ["💥", "🔥", "⚡", "✨"]
     },
     // ... 其他类别
-  }
+  },
+
+  // 翻译功能配置
+  "funny-vscode-extension.translation.provider": "baidu",
+  "funny-vscode-extension.translation.baiduAppId": "",
+  "funny-vscode-extension.translation.baiduSecretKey": "",
+  "funny-vscode-extension.translation.timeout": 5000
 }
 ```
 

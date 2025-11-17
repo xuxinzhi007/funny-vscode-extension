@@ -248,6 +248,29 @@ class IdleGameViewProvider {
           case 'pomodoro_break':
             vscode.commands.executeCommand('funny-vscode-extension.startPomodoroBreak');
             break;
+
+          case 'openTranslationSettings':
+            // 打开翻译设置面板
+            vscode.commands.executeCommand('funny-vscode-extension.openTranslationSettings');
+            break;
+
+          case 'testTranslation':
+            // 测试翻译功能
+            const { getTranslationService } = require('../translation/translationService');
+            const translationService = getTranslationService();
+            translationService.translate('测试', 'zh', 'en').then(result => {
+              if (result.error) {
+                vscode.window.showErrorMessage(`翻译测试失败: ${result.error}`);
+              } else {
+                vscode.window.showInformationMessage(`✅ 翻译测试成功！"测试" → "${result.text}"`);
+              }
+            });
+            break;
+
+          case 'openBaiduDoc':
+            // 打开百度翻译文档
+            vscode.env.openExternal(vscode.Uri.parse('https://fanyi-api.baidu.com/doc/21'));
+            break;
         }
       }
     );
@@ -1986,6 +2009,37 @@ class IdleGameViewProvider {
               </div>
             </div>
           </div>
+          <div class="section">
+            <div class="title">
+              <span>🌐 翻译功能</span>
+            </div>
+            <div class="item">
+              <div class="item-name">快速翻译</div>
+              <div class="item-detail">选中文字 → 右键 → 翻译（支持中英互译）</div>
+              <button class="btn" onclick="openTranslationSettings()">⚙️ 配置翻译API</button>
+            </div>
+            <div class="item" style="margin-top: 10px;">
+              <div class="item-name">变量名建议</div>
+              <div class="item-detail">输入中文自动生成规范的英文变量名</div>
+              <button class="btn" onclick="testTranslation()">🧪 测试翻译</button>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: var(--vscode-input-background); border-radius: 4px; font-size: 10px; opacity: 0.8;">
+              <strong>💡 使用方法</strong>
+              <div style="margin-top: 6px;">
+                <div>• <strong>翻译文本</strong>：选中文字 → 右键 → 🌐 翻译选中文本</div>
+                <div>• <strong>变量名</strong>：选中中文 → 右键 → 💡 变量名建议</div>
+                <div>• <strong>快捷键</strong>：Ctrl+Alt+T 翻译，Ctrl+Alt+V 变量名</div>
+              </div>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: var(--vscode-input-background); border-radius: 4px; font-size: 10px; opacity: 0.8;">
+              <strong>📖 配置说明</strong>
+              <div style="margin-top: 6px;">
+                <div>• 点击"配置翻译API"设置百度翻译密钥</div>
+                <div>• 免费申请：<span style="color: var(--vscode-textLink-foreground); cursor: pointer;" onclick="openBaiduDoc()">百度翻译开放平台</span></div>
+                <div>• 免费额度：每月 100 万字符</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <script>
@@ -2847,6 +2901,20 @@ class IdleGameViewProvider {
           setTimeout(() => {
             initBattleCanvas();
           }, 100);
+
+          // ========== 翻译功能函数 ==========
+
+          function openTranslationSettings() {
+            vscode.postMessage({ command: 'openTranslationSettings' });
+          }
+
+          function testTranslation() {
+            vscode.postMessage({ command: 'testTranslation' });
+          }
+
+          function openBaiduDoc() {
+            vscode.postMessage({ command: 'openBaiduDoc' });
+          }
         </script>
       </body>
       </html>

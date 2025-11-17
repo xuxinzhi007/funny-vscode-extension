@@ -55,7 +55,9 @@
     "onCommand:funny-vscode-extension.backupSave",
     "onCommand:funny-vscode-extension.togglePomodoro",
     "onCommand:funny-vscode-extension.stopPomodoro",
-    "onCommand:funny-vscode-extension.startPomodoroBreak"
+    "onCommand:funny-vscode-extension.startPomodoroBreak",
+    "onCommand:funny-vscode-extension.translateSelection",
+    "onCommand:funny-vscode-extension.suggestVariableName"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -98,6 +100,23 @@
       {
         "command": "funny-vscode-extension.startPomodoroBreak",
         "title": "开始休息"
+      },
+      {
+        "command": "funny-vscode-extension.translateSelection",
+        "title": "🌐 翻译选中文本"
+      },
+      {
+        "command": "funny-vscode-extension.suggestVariableName",
+        "title": "💡 变量名建议"
+      },
+      {
+        "command": "funny-vscode-extension.openTranslationSettings",
+        "title": "翻译设置",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "funny-vscode-extension.clearTranslationCache",
+        "title": "清除翻译缓存"
       }
     ],
     "viewsContainers": {
@@ -119,6 +138,18 @@
       ]
     },
     "menus": {
+      "editor/context": [
+        {
+          "command": "funny-vscode-extension.translateSelection",
+          "when": "editorHasSelection",
+          "group": "9_cutcopypaste"
+        },
+        {
+          "command": "funny-vscode-extension.suggestVariableName",
+          "when": "editorTextFocus",
+          "group": "9_cutcopypaste"
+        }
+      ],
       "view/title": [
         {
           "command": "funny-vscode-extension.showSaveInfo",
@@ -166,6 +197,18 @@
         "command": "funny-vscode-extension.clickCoin",
         "key": "ctrl+alt+c",
         "mac": "cmd+alt+c"
+      },
+      {
+        "command": "funny-vscode-extension.translateSelection",
+        "key": "ctrl+alt+t",
+        "mac": "cmd+alt+t",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "funny-vscode-extension.suggestVariableName",
+        "key": "ctrl+alt+v",
+        "mac": "cmd+alt+v",
+        "when": "editorTextFocus"
       }
     ],
     "configuration": {
@@ -262,6 +305,43 @@
           "type": "boolean",
           "default": false,
           "description": "工作结束后自动开始休息"
+        },
+        "funny-vscode-extension.translation.provider": {
+          "type": "string",
+          "enum": ["baidu", "custom"],
+          "default": "baidu",
+          "description": "翻译服务提供商",
+          "enumDescriptions": [
+            "百度翻译（需要申请 AppID 和密钥）",
+            "自定义API（需要配置API地址）"
+          ]
+        },
+        "funny-vscode-extension.translation.baiduAppId": {
+          "type": "string",
+          "default": "",
+          "description": "百度翻译 AppID（在 https://fanyi-api.baidu.com 申请）"
+        },
+        "funny-vscode-extension.translation.baiduSecretKey": {
+          "type": "string",
+          "default": "",
+          "description": "百度翻译密钥"
+        },
+        "funny-vscode-extension.translation.customApiUrl": {
+          "type": "string",
+          "default": "",
+          "description": "自定义翻译API地址（POST请求）"
+        },
+        "funny-vscode-extension.translation.customApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "自定义API密钥（可选）"
+        },
+        "funny-vscode-extension.translation.timeout": {
+          "type": "number",
+          "default": 5000,
+          "minimum": 1000,
+          "maximum": 30000,
+          "description": "翻译请求超时时间（毫秒）"
         }
       }
     }

@@ -226,6 +226,12 @@ function activate(context) {
     'Pomodoro config listener'
   );
 
+  // ========== 翻译系统 ==========
+
+  const { TranslationProvider } = require('./src/translation/translationProvider');
+  const translationProvider = new TranslationProvider(context);
+  translationProvider.initialize();
+
   // ========== 代码统计系统 ==========
 
   const { getCodeStatistics } = require('./src/productivity/codeStatistics');
