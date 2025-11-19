@@ -2,7 +2,7 @@
   "name": "funny-vscode-extension",
   "displayName": "Coding Idle Game",
   "description": "An idle game for coders! Earn coins while coding, with particle effects, keyword explosions, and upgrade systems. Make programming fun and rewarding!",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "publisher": "xinzhixu",
   "author": {
     "name": "xuxinzhi007"
@@ -258,7 +258,10 @@
         },
         "funny-vscode-extension.effectStyle": {
           "type": "string",
-          "enum": ["classic", "enhanced"],
+          "enum": [
+            "classic",
+            "enhanced"
+          ],
           "default": "enhanced",
           "description": "特效样式：classic=表情符号，enhanced=CSS动画"
         },
@@ -267,33 +270,100 @@
           "default": {
             "functions": {
               "enabled": true,
-              "keywords": ["function", "func", "def", "fn", "async", "await"],
-              "symbols": ["💥", "🔥", "⚡", "✨"]
+              "keywords": [
+                "function",
+                "func",
+                "def",
+                "fn",
+                "async",
+                "await"
+              ],
+              "symbols": [
+                "💥",
+                "🔥",
+                "⚡",
+                "✨"
+              ]
             },
             "classes": {
               "enabled": true,
-              "keywords": ["class", "interface", "struct", "enum", "type"],
-              "symbols": ["💎", "👑", "🌟", "⭐"]
+              "keywords": [
+                "class",
+                "interface",
+                "struct",
+                "enum",
+                "type"
+              ],
+              "symbols": [
+                "💎",
+                "👑",
+                "🌟",
+                "⭐"
+              ]
             },
             "loops": {
               "enabled": true,
-              "keywords": ["for", "while", "loop", "foreach", "map", "filter"],
-              "symbols": ["🔄", "♻️", "🌀", "⚙️"]
+              "keywords": [
+                "for",
+                "while",
+                "loop",
+                "foreach",
+                "map",
+                "filter"
+              ],
+              "symbols": [
+                "🔄",
+                "♻️",
+                "🌀",
+                "⚙️"
+              ]
             },
             "conditions": {
               "enabled": true,
-              "keywords": ["if", "else", "switch", "case", "when", "match"],
-              "symbols": ["❓", "❗", "⚠️", "🎯"]
+              "keywords": [
+                "if",
+                "else",
+                "switch",
+                "case",
+                "when",
+                "match"
+              ],
+              "symbols": [
+                "❓",
+                "❗",
+                "⚠️",
+                "🎯"
+              ]
             },
             "variables": {
               "enabled": true,
-              "keywords": ["const", "let", "var", "val"],
-              "symbols": ["📦", "🎁", "📫", "🗃️"]
+              "keywords": [
+                "const",
+                "let",
+                "var",
+                "val"
+              ],
+              "symbols": [
+                "📦",
+                "🎁",
+                "📫",
+                "🗃️"
+              ]
             },
             "returns": {
               "enabled": true,
-              "keywords": ["return", "yield", "break", "continue"],
-              "symbols": ["↩️", "⬅️", "🔙", "↪️"]
+              "keywords": [
+                "return",
+                "yield",
+                "break",
+                "continue"
+              ],
+              "symbols": [
+                "↩️",
+                "⬅️",
+                "🔙",
+                "↪️"
+              ]
             }
           },
           "description": "关键词类别配置"
@@ -333,7 +403,10 @@
         },
         "funny-vscode-extension.translation.provider": {
           "type": "string",
-          "enum": ["baidu", "custom"],
+          "enum": [
+            "baidu",
+            "custom"
+          ],
           "default": "baidu",
           "description": "翻译服务提供商",
           "enumDescriptions": [
