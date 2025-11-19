@@ -402,60 +402,82 @@ class CodeImageGenerator {
     });
 
     function generatePreview() {
-      const config = {
-        bgStyle: document.getElementById('bg-style').value,
-        bgColor1: document.getElementById('bg-color1').value,
-        bgColor2: document.getElementById('bg-color2').value,
-        showSignature: document.getElementById('show-signature').checked,
-        signatureText: document.getElementById('signature-text').value,
-        imageSize: document.getElementById('image-size').value,
-        code,
-        language
-      };
+      try {
+        const config = {
+          bgStyle: document.getElementById('bg-style').value,
+          bgColor1: document.getElementById('bg-color1').value,
+          bgColor2: document.getElementById('bg-color2').value,
+          showSignature: document.getElementById('show-signature').checked,
+          signatureText: document.getElementById('signature-text').value,
+          imageSize: document.getElementById('image-size').value,
+          code,
+          language
+        };
 
-      renderCodeImage(config);
+        console.log('Generating preview with config:', config);
+        renderCodeImage(config);
 
-      vscode.postMessage({
-        command: 'generate',
-        config
-      });
+        vscode.postMessage({
+          command: 'generate',
+          config
+        });
+      } catch (error) {
+        console.error('Error generating preview:', error);
+        const container = document.getElementById('canvas-container');
+        container.innerHTML = '<div class="loading" style="color: #ff5555;">生成失败: ' + error.message + '</div>';
+      }
     }
 
     function renderCodeImage(config) {
-      const container = document.getElementById('canvas-container');
-      container.innerHTML = '<div class="loading">生成中...</div>';
+      try {
+        const container = document.getElementById('canvas-container');
+        container.innerHTML = '<div class="loading">生成中...</div>';
 
-      // 获取尺寸
-      const sizes = {
-        small: { width: 800, height: 600 },
-        medium: { width: 1200, height: 800 },
-        large: { width: 1600, height: 1200 }
-      };
-      const size = sizes[config.imageSize];
+        // 获取尺寸
+        const sizes = {
+          small: { width: 800, height: 600 },
+          medium: { width: 1200, height: 800 },
+          large: { width: 1600, height: 1200 }
+        };
+        const size = sizes[config.imageSize];
 
-      // 创建canvas
-      const canvas = document.createElement('canvas');
-      canvas.id = 'preview-canvas';
-      canvas.width = size.width;
-      canvas.height = size.height;
+        console.log('Creating canvas with size:', size);
 
-      const ctx = canvas.getContext('2d');
+        // 创建canvas
+        const canvas = document.createElement('canvas');
+        canvas.id = 'preview-canvas';
+        canvas.width = size.width;
+        canvas.height = size.height;
 
-      // 绘制背景
-      drawBackground(ctx, config, size);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          throw new Error('无法创建Canvas上下文');
+        }
 
-      // 绘制代码
-      drawCode(ctx, config, size);
+        // 绘制背景
+        console.log('Drawing background...');
+        drawBackground(ctx, config, size);
 
-      // 绘制签名
-      if (config.showSignature) {
-        drawSignature(ctx, config, size);
+        // 绘制代码
+        console.log('Drawing code...');
+        drawCode(ctx, config, size);
+
+        // 绘制签名
+        if (config.showSignature) {
+          console.log('Drawing signature...');
+          drawSignature(ctx, config, size);
+        }
+
+        container.innerHTML = '';
+        container.appendChild(canvas);
+
+        currentCanvas = canvas;
+        console.log('Canvas rendered successfully');
+      } catch (error) {
+        console.error('Error rendering code image:', error);
+        const container = document.getElementById('canvas-container');
+        container.innerHTML = '<div class="loading" style="color: #ff5555;">渲染失败: ' + error.message + '</div>';
       }
-
-      container.innerHTML = '';
-      container.appendChild(canvas);
-
-      currentCanvas = canvas;
     }
 
     function drawBackground(ctx, config, size) {
@@ -528,7 +550,7 @@ class CodeImageGenerator {
       ctx.font = '16px Consolas, Monaco, "Courier New", monospace';
       ctx.textBaseline = 'top';
 
-      const lines = config.code.split('\\n');
+      const lines = config.code.split('\\\\n');
       const lineHeight = 24;
       const textX = codeX + 20;
       let textY = codeY + 50;
@@ -548,7 +570,7 @@ class CodeImageGenerator {
 
         // 行号
         ctx.fillStyle = '#858585';
-        const lineNum = \`\${index + 1}\`.padStart(3, ' ');
+        const lineNum = String(index + 1).padStart(3, ' ');
         ctx.fillText(lineNum, textX, textY);
 
         // 代码内容 - 简单语法高亮

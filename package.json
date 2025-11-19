@@ -123,6 +123,14 @@
       {
         "command": "funny-vscode-extension.interactPet",
         "title": "❤️ 与搭子互动"
+      },
+      {
+        "command": "funny-vscode-extension.togglePetWorkMode",
+        "title": "🔄 切换搭子显示模式"
+      },
+      {
+        "command": "funny-vscode-extension.cyclePetMode",
+        "title": "⚡ 快速切换搭子模式"
       }
     ],
     "viewsContainers": {
@@ -154,6 +162,11 @@
           "command": "funny-vscode-extension.suggestVariableName",
           "when": "editorTextFocus",
           "group": "9_cutcopypaste"
+        },
+        {
+          "command": "funny-vscode-extension.generateCodeImage",
+          "when": "editorTextFocus",
+          "group": "z_commands"
         }
       ],
       "view/title": [

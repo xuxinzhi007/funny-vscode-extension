@@ -15,12 +15,13 @@ const { loadGameState, saveGameState, showSaveInfo, openSaveFolder, backupGameSa
 
 // 导入UI模块
 const { createStatusBar, updateStatusBar } = require('./src/ui/statusBar');
+const { createPetStatusBar, updatePetStatusBar, switchMode, cycleMode, getCurrentMode } = require('./src/ui/statusBar/petStatusBar');
 
 // 导入宠物系统模块
 const { getPetCore } = require('./src/pet/petCore');
 const { getDDLManager } = require('./src/pet/ddlManager');
 const { PetWebview } = require('./src/pet/petWebview');
-const { CodeImageGenerator } = require('./src/pet/codeImageGenerator');
+const { CodeImageGeneratorSimple } = require('./src/pet/codeImageGeneratorSimple');
 const { getSkinManager } = require('./src/pet/skinManager');
 
 /**
@@ -86,11 +87,21 @@ function activate(context) {
   // 创建宠物Webview
   const petWebview = new PetWebview(context, petCore, ddlManager);
 
-  // 创建代码图片生成器
-  const codeImageGenerator = new CodeImageGenerator(context, petCore);
+  // 创建代码图片生成器（使用简化版）
+  const codeImageGenerator = new CodeImageGeneratorSimple(context, petCore);
 
   // 创建皮肤管理器
   const skinManager = getSkinManager();
+
+  // 初始化宠物设置（如果不存在）
+  if (!gameState.petSettings) {
+    gameState.petSettings = {
+      workMode: 'entertainment' // entertainment | work | focus
+    };
+  }
+
+  // 创建宠物状态栏
+  const petStatusBarItem = createPetStatusBar(petCore, ddlManager, gameState.petSettings.workMode);
 
   // 注册懒加载模块
   registerLazyModules(activationManager, context);
@@ -258,6 +269,61 @@ function activate(context) {
     } catch (error) {
       logger.error('Error interacting with pet:', error);
       vscode.window.showErrorMessage('与搭子互动失败: ' + error.message);
+    }
+  });
+
+  // 切换搭子状态栏工作模式
+  let togglePetWorkModeCommand = vscode.commands.registerCommand('funny-vscode-extension.togglePetWorkMode', function () {
+    try {
+      const modes = [
+        { 
+          label: '🎮 娱乐模式', 
+          description: '显示搭子表情、心情、能量等信息',
+          mode: 'entertainment' 
+        },
+        { 
+          label: '💼 工作模式', 
+          description: '只显示DDL提醒，低调专业',
+          mode: 'work' 
+        },
+        { 
+          label: '🔔 专注模式', 
+          description: '极简显示，仅DDL临近时提醒',
+          mode: 'focus' 
+        }
+      ];
+
+      const currentMode = getCurrentMode();
+      modes.forEach(m => {
+        if (m.mode === currentMode) {
+          m.description = '✓ 当前模式 - ' + m.description;
+        }
+      });
+
+      vscode.window.showQuickPick(modes, {
+        placeHolder: '选择搭子状态栏显示模式'
+      }).then(selection => {
+        if (selection) {
+          switchMode(selection.mode);
+          gameState.petSettings.workMode = selection.mode;
+          saveGameState(context);
+        }
+      });
+    } catch (error) {
+      logger.error('Error toggling pet work mode:', error);
+      vscode.window.showErrorMessage('切换模式失败: ' + error.message);
+    }
+  });
+
+  // 快速循环切换搭子模式
+  let cyclePetModeCommand = vscode.commands.registerCommand('funny-vscode-extension.cyclePetMode', function () {
+    try {
+      cycleMode();
+      gameState.petSettings.workMode = getCurrentMode();
+      saveGameState(context);
+    } catch (error) {
+      logger.error('Error cycling pet mode:', error);
+      vscode.window.showErrorMessage('切换模式失败: ' + error.message);
     }
   });
 
@@ -596,6 +662,8 @@ function activate(context) {
   context.subscriptions.push(generateCodeImageCommand);
   context.subscriptions.push(changePetSkinCommand);
   context.subscriptions.push(interactPetCommand);
+  context.subscriptions.push(togglePetWorkModeCommand);
+  context.subscriptions.push(cyclePetModeCommand);
 
   // 原有命令
   context.subscriptions.push(openSidebarCommand);
@@ -608,6 +676,7 @@ function activate(context) {
   context.subscriptions.push(startPomodoroBreakCommand);
   context.subscriptions.push(coinStatusBarItem);
   context.subscriptions.push(pomodoroStatusBar);
+  context.subscriptions.push(petStatusBarItem);
 
   logger.info('Extension activated successfully with Pet System');
 }
