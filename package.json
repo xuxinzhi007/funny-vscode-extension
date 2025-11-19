@@ -52,14 +52,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "funny-vscode-extension.showJoke",
-        "title": "显示笑话"
-      },
-      {
-        "command": "funny-vscode-extension.showEmoji",
-        "title": "随机表情"
-      },
-      {
         "command": "funny-vscode-extension.clickCoin",
         "title": "点击获得金币"
       },
@@ -197,16 +189,6 @@
       ]
     },
     "keybindings": [
-      {
-        "command": "funny-vscode-extension.showJoke",
-        "key": "ctrl+alt+j",
-        "mac": "cmd+alt+j"
-      },
-      {
-        "command": "funny-vscode-extension.showEmoji",
-        "key": "ctrl+alt+e",
-        "mac": "cmd+alt+e"
-      },
       {
         "command": "funny-vscode-extension.clickCoin",
         "key": "ctrl+alt+c",

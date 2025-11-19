@@ -117,11 +117,6 @@ A VSCode extension that makes coding more fun! Combines an idle game, cool effec
 
 详细使用说明：[快速上手](TRANSLATION_QUICK_START.md) | [完整指南](TRANSLATION_GUIDE.md) | [配置说明](TRANSLATION_SETUP.md)
 
-### 😄 趣味功能
-
-- **随机笑话**：显示编程相关的幽默笑话
-- **随机表情**：在编辑器中插入随机 emoji
-
 ## 🚀 快速开始
 
 ### 用户安装
@@ -205,8 +200,6 @@ xinzhixu.funny-vscode-extension
 
 | 快捷键 | 功能 |
 |--------|------|
-| `Cmd+Alt+J` / `Ctrl+Alt+J` | 显示随机笑话 |
-| `Cmd+Alt+E` / `Ctrl+Alt+E` | 插入随机表情 |
 | `Cmd+Alt+C` / `Ctrl+Alt+C` | 手动获得金币 |
 | `Cmd+Alt+T` / `Ctrl+Alt+T` | 翻译选中文本 |
 | `Cmd+Alt+V` / `Ctrl+Alt+V` | 变量名建议 |
@@ -352,7 +345,6 @@ for (let i = 0; i < 10; i++) {  // 🔄 ♻️ 🌀 触发循环特效！
 
 ### 修改代码
 
-- **添加新笑话**：编辑 `extension.js` 中的 `jokes` 数组
 - **修改游戏数值**：编辑 `src/game/gameState.js`
 - **自定义特效**：编辑 `src/ui/coinParticleEffect.js`
 - **调整界面样式**：编辑 `src/ui/webview.js` 中的 CSS
