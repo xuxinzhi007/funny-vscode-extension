@@ -2,7 +2,7 @@
   "name": "funny-vscode-extension",
   "displayName": "Coding Idle Game",
   "description": "An idle game for coders! Earn coins while coding, with particle effects, keyword explosions, and upgrade systems. Make programming fun and rewarding!",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "publisher": "xinzhixu",
   "author": {
     "name": "xuxinzhi007"
