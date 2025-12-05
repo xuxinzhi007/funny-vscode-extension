@@ -2,7 +2,7 @@
   "name": "coding-buddy",
   "displayName": "Coding Buddy - 编程搭子",
   "description": "一个住在 VSCode 里的小伙伴，陪你写代码、管理 DDL、专注工作",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "publisher": "xinzhixu",
   "author": {
     "name": "xuxinzhi007"
@@ -140,7 +140,12 @@
         },
         "coding-buddy.ai.provider": {
           "type": "string",
-          "enum": ["none", "openai", "claude", "custom"],
+          "enum": [
+            "none",
+            "openai",
+            "claude",
+            "custom"
+          ],
           "default": "none",
           "description": "AI 聊天提供商（none = 使用预设对话）"
         },
