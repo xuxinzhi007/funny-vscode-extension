@@ -2,7 +2,7 @@
   "name": "funny-vscode-extension",
   "displayName": "Coding Buddy - 编程搭子",
   "description": "一个住在 VSCode 里的小伙伴，陪你写代码、管理 DDL、专注工作",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "publisher": "xinzhixu",
   "author": {
     "name": "xuxinzhi007"
