@@ -1,770 +1,207 @@
+/**
+ * Coding Buddy - 编程搭子
+ * 一个住在 VSCode 里的小伙伴，陪你写代码
+ */
+
 const vscode = require('vscode');
 
-// 导入核心系统
-const { getActivationManager } = require('./src/core/activation');
-const { getResourceManager } = require('./src/core/resourceManager');
-const { getPerformanceMonitor } = require('./src/core/performance');
+// 核心模块
 const { getEventBus } = require('./src/core/eventBus');
-const { getLogger } = require('./src/utils/logger');
-const { getErrorHandler } = require('./src/utils/errorHandler');
 
-// 导入核心游戏模块（始终加载）
-const { getGameState, calculateCoinsPerSecond, getEffectiveProduction, formatNumber } = require('./src/game/gameState');
-const { checkAchievements } = require('./src/game/achievements');
-const { loadGameState, saveGameState, showSaveInfo, openSaveFolder, backupGameSave } = require('./src/game/storage');
+// 搭子模块
+const { initState, getState, saveState, checkDailyReset } = require('./src/buddy/state');
+const { initBuddy, dispose: disposeBuddy } = require('./src/buddy/buddy');
+const { initDDL, addTask, getPendingTasks, getTaskCountdown, dispose: disposeDDL } = require('./src/buddy/ddl');
+const { startWork, startBreak, pause, resume, stop, getFocusState, dispose: disposeFocus } = require('./src/buddy/focus');
 
-// 导入UI模块
-const { createStatusBar, updateStatusBar } = require('./src/ui/statusBar');
-const { createPetStatusBar, updatePetStatusBar, switchMode, cycleMode, getCurrentMode } = require('./src/ui/statusBar/petStatusBar');
+// UI 模块
+const { createStatusBar, dispose: disposeStatusBar } = require('./src/ui/statusBar');
+const { BuddyWebviewProvider } = require('./src/ui/webviewPanel');
 
-// 导入宠物系统模块
-const { getPetCore } = require('./src/pet/petCore');
-const { getDDLManager } = require('./src/pet/ddlManager');
-const { PetWebview } = require('./src/pet/petWebview');
-const { CodeImageGeneratorSimple } = require('./src/pet/codeImageGeneratorSimple');
-const { getSkinManager } = require('./src/pet/skinManager');
+let saveTimer = null;
+let codeChangeListener = null;
 
 /**
  * 激活扩展
  */
 function activate(context) {
-  const logger = getLogger();
-  const errorHandler = getErrorHandler();
-  const activationManager = getActivationManager();
-  const resourceManager = getResourceManager();
-  const performanceMonitor = getPerformanceMonitor();
-  const eventBus = getEventBus();
+  console.log('Coding Buddy is activating...');
 
-  logger.info('Extension activating...');
+  // 初始化状态
+  initState(context);
+  
+  // 初始化搭子系统
+  initBuddy();
+  
+  // 初始化 DDL 管理
+  initDDL();
 
-  // 启动性能监控
-  performanceMonitor.start();
+  // 创建状态栏
+  const statusBar = createStatusBar();
+  context.subscriptions.push(statusBar);
 
-  // 加载游戏状态
-  loadGameState(context);
-
-  // ========== 初始化宠物系统 ==========
-  const gameState = getGameState();
-
-  // 初始化宠物状态(如果不存在)
-  if (!gameState.pet) {
-    gameState.pet = {
-      name: '小搭子',
-      level: 1,
-      exp: 0,
-      mood: 100,
-      energy: 100,
-      currentSkin: 'default',
-      unlockedSkins: ['default'],
-      position: { x: 10, y: 10 },
-      visible: true,
-      currentBehavior: 'idle',
-      behaviorStartTime: Date.now(),
-      lastInteraction: Date.now(),
-      totalInteractions: 0,
-      statistics: {
-        totalCodingTime: 0,
-        ddlsCompleted: 0,
-        imagesGenerated: 0,
-        pomodorosCompleted: 0
-      }
-    };
-  }
-
-  // 初始化DDL任务列表
-  if (!gameState.ddlTasks) {
-    gameState.ddlTasks = [];
-  }
-
-  // 创建宠物核心系统
-  const petCore = getPetCore();
-  petCore.initialize(gameState.pet);
-
-  // 创建DDL管理器
-  const ddlManager = getDDLManager(petCore);
-  ddlManager.initialize(gameState.ddlTasks);
-
-  // 创建宠物Webview
-  const petWebview = new PetWebview(context, petCore, ddlManager);
-
-  // 创建代码图片生成器（使用简化版）
-  const codeImageGenerator = new CodeImageGeneratorSimple(context, petCore);
-
-  // 创建皮肤管理器
-  const skinManager = getSkinManager();
-
-  // 初始化宠物设置（如果不存在）
-  if (!gameState.petSettings) {
-    gameState.petSettings = {
-      workMode: 'entertainment' // entertainment | work | focus
-    };
-  }
-
-  // 创建宠物状态栏
-  const petStatusBarItem = createPetStatusBar(petCore, ddlManager, gameState.petSettings.workMode);
-
-  // 注册懒加载模块
-  registerLazyModules(activationManager, context);
+  // 注册侧边栏视图
+  const webviewProvider = new BuddyWebviewProvider(context);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider('codingBuddyView', webviewProvider)
+  );
 
   // ========== 注册命令 ==========
 
-  // ========== 宠物系统命令 ==========
-
-  // 显示/隐藏宠物
-  let togglePetCommand = vscode.commands.registerCommand('funny-vscode-extension.togglePet', function () {
-    petWebview.toggle();
-  });
-
-  // 添加DDL任务
-  let addDDLCommand = vscode.commands.registerCommand('funny-vscode-extension.addDDL', async function () {
-    try {
-      const taskName = await vscode.window.showInputBox({
-        prompt: '输入任务名称',
-        placeHolder: '例如: 完成项目报告'
-      });
-
-      if (!taskName) return;
-
-      const deadlineStr = await vscode.window.showInputBox({
-        prompt: '输入截止时间 (格式: YYYY-MM-DD HH:mm)',
-        placeHolder: '例如: 2025-11-20 23:59',
-        validateInput: (value) => {
-          if (!value) return '请输入截止时间';
-          const date = new Date(value);
-          if (isNaN(date.getTime())) {
-            return '日期格式错误，请使用 YYYY-MM-DD HH:mm 格式';
-          }
-          if (date.getTime() < Date.now()) {
-            return '截止时间不能早于当前时间';
-          }
-          return null;
-        }
-      });
-
-      if (!deadlineStr) return;
-
-      const deadline = new Date(deadlineStr);
-      const task = ddlManager.addTask(taskName, deadline);
-      gameState.ddlTasks = ddlManager.getTasks();
-      saveGameState(context);
-
-      vscode.window.showInformationMessage(`✅ DDL已添加: ${taskName}`);
-    } catch (error) {
-      logger.error('Error adding DDL:', error);
-      vscode.window.showErrorMessage('添加DDL失败: ' + error.message);
-    }
-  });
-
-  // 查看DDL列表
-  let viewDDLCommand = vscode.commands.registerCommand('funny-vscode-extension.viewDDL', function () {
-    try {
-      const tasks = ddlManager.getPendingTasks();
-
-      if (tasks.length === 0) {
-        vscode.window.showInformationMessage('🎉 目前没有待完成的DDL!');
-        return;
-      }
-
-      const items = tasks.map(task => {
-        const countdown = ddlManager.getTaskCountdown(task.id);
-        return {
-          label: task.name,
-          description: countdown.overdue ? '⚠️ 已过期' : `⏰ 还剩 ${countdown.text}`,
-          task
-        };
-      });
-
-      vscode.window.showQuickPick(items, {
-        placeHolder: '选择DDL任务'
-      }).then(selection => {
-        if (selection) {
-          vscode.window.showInformationMessage(
-            `完成 "${selection.task.name}" 了吗?`,
-            '标记完成',
-            '删除任务'
-          ).then(action => {
-            if (action === '标记完成') {
-              ddlManager.completeTask(selection.task.id);
-              gameState.ddlTasks = ddlManager.getTasks();
-              saveGameState(context);
-              vscode.window.showInformationMessage('✅ 任务已完成!');
-            } else if (action === '删除任务') {
-              ddlManager.deleteTask(selection.task.id);
-              gameState.ddlTasks = ddlManager.getTasks();
-              saveGameState(context);
-              vscode.window.showInformationMessage('🗑️ 任务已删除');
-            }
-          });
-        }
-      });
-    } catch (error) {
-      logger.error('Error viewing DDL:', error);
-      vscode.window.showErrorMessage('查看DDL失败: ' + error.message);
-    }
-  });
-
-  // 生成代码截图
-  let generateCodeImageCommand = vscode.commands.registerCommand('funny-vscode-extension.generateCodeImage', function () {
-    try {
-      codeImageGenerator.generateImage();
-    } catch (error) {
-      logger.error('Error generating code image:', error);
-      vscode.window.showErrorMessage('生成代码截图失败: ' + error.message);
-    }
-  });
-
-  // 切换宠物皮肤
-  let changePetSkinCommand = vscode.commands.registerCommand('funny-vscode-extension.changePetSkin', function () {
-    try {
-      const allSkins = skinManager.getAllSkins();
-      const items = allSkins.map(skin => {
-        const isUnlocked = skinManager.isSkinUnlocked(skin.id, gameState);
-        const isCurrent = skin.id === petCore.state.currentSkin;
-
-        return {
-          label: `${skin.emoji} ${skin.name}`,
-          description: isCurrent ? '✓ 当前使用' : (isUnlocked ? '已解锁' : '🔒 未解锁'),
-          detail: isUnlocked ? undefined : skinManager.getUnlockHint(skin.id, gameState),
-          skin,
-          isUnlocked
-        };
-      });
-
-      vscode.window.showQuickPick(items, {
-        placeHolder: '选择宠物皮肤'
-      }).then(selection => {
-        if (selection && selection.isUnlocked) {
-          petCore.changeSkin(selection.skin.id);
-          gameState.pet = petCore.getState();
-          saveGameState(context);
-          vscode.window.showInformationMessage(`已切换到 ${selection.skin.name}`);
-        } else if (selection && !selection.isUnlocked) {
-          vscode.window.showWarningMessage(`${selection.skin.name} 尚未解锁`);
-        }
-      });
-    } catch (error) {
-      logger.error('Error changing pet skin:', error);
-      vscode.window.showErrorMessage('切换皮肤失败: ' + error.message);
-    }
-  });
-
-  // 与宠物交互
-  let interactPetCommand = vscode.commands.registerCommand('funny-vscode-extension.interactPet', function () {
-    try {
-      const actions = [
-        { label: '❤️ 抚摸搭子', action: 'pet' },
-        { label: '🍎 喂食搭子', action: 'feed' },
-        { label: '🎮 陪搭子玩耍', action: 'play' }
-      ];
-
-      vscode.window.showQuickPick(actions, {
-        placeHolder: '选择交互方式'
-      }).then(selection => {
-        if (selection) {
-          petCore.interact(selection.action);
-          gameState.pet = petCore.getState();
-          saveGameState(context);
-        }
-      });
-    } catch (error) {
-      logger.error('Error interacting with pet:', error);
-      vscode.window.showErrorMessage('与搭子互动失败: ' + error.message);
-    }
-  });
-
-  // 切换搭子状态栏工作模式
-  let togglePetWorkModeCommand = vscode.commands.registerCommand('funny-vscode-extension.togglePetWorkMode', function () {
-    try {
-      const modes = [
-        { 
-          label: '🎮 娱乐模式', 
-          description: '显示搭子表情、心情、能量等信息',
-          mode: 'entertainment' 
-        },
-        { 
-          label: '💼 工作模式', 
-          description: '只显示DDL提醒，低调专业',
-          mode: 'work' 
-        },
-        { 
-          label: '🔔 专注模式', 
-          description: '极简显示，仅DDL临近时提醒',
-          mode: 'focus' 
-        }
-      ];
-
-      const currentMode = getCurrentMode();
-      modes.forEach(m => {
-        if (m.mode === currentMode) {
-          m.description = '✓ 当前模式 - ' + m.description;
-        }
-      });
-
-      vscode.window.showQuickPick(modes, {
-        placeHolder: '选择搭子状态栏显示模式'
-      }).then(selection => {
-        if (selection) {
-          switchMode(selection.mode);
-          gameState.petSettings.workMode = selection.mode;
-          saveGameState(context);
-        }
-      });
-    } catch (error) {
-      logger.error('Error toggling pet work mode:', error);
-      vscode.window.showErrorMessage('切换模式失败: ' + error.message);
-    }
-  });
-
-  // 快速循环切换搭子模式
-  let cyclePetModeCommand = vscode.commands.registerCommand('funny-vscode-extension.cyclePetMode', function () {
-    try {
-      cycleMode();
-      gameState.petSettings.workMode = getCurrentMode();
-      saveGameState(context);
-    } catch (error) {
-      logger.error('Error cycling pet mode:', error);
-      vscode.window.showErrorMessage('切换模式失败: ' + error.message);
-    }
-  });
-
-  // ========== 原有命令 ==========
-
-  // 打开侧边栏
-  let openSidebarCommand = vscode.commands.registerCommand('funny-vscode-extension.openSidebar', function () {
-    vscode.commands.executeCommand('workbench.view.extension.idleGameContainer');
-  });
-
-  // 手动点击获得金币
-  let clickCoinCommand = vscode.commands.registerCommand('funny-vscode-extension.clickCoin', function () {
-    gameState.coins += 1;
-    gameState.totalCoinsEarned += 1;
-    checkAchievements();
-    updateStatusBar();
-    saveGameState(context);
-    vscode.window.showInformationMessage(`💰 +1 金币！当前: ${formatNumber(gameState.coins)}`);
-  });
-
-  // 存档管理命令
-  let showSaveInfoCommand = vscode.commands.registerCommand('funny-vscode-extension.showSaveInfo', function () {
-    showSaveInfo(context);
-  });
-
-  let openSaveFolderCommand = vscode.commands.registerCommand('funny-vscode-extension.openSaveFolder', function () {
-    openSaveFolder(context);
-  });
-
-  let backupSaveCommand = vscode.commands.registerCommand('funny-vscode-extension.backupSave', function () {
-    backupGameSave(context);
-  });
-
-  // ========== 番茄钟命令 ==========
-
-  // 初始化番茄钟
-  const { getPomodoroTimer } = require('./src/productivity/pomodoroTimer');
-  const { createPomodoroStatusBar } = require('./src/ui/statusBar/pomodoroStatusBar');
-  
-  const pomodoroTimer = getPomodoroTimer(getGameState());
-  
-  // 从配置加载设置
-  const pomodoroConfig = vscode.workspace.getConfiguration('funny-vscode-extension.pomodoro');
-  pomodoroTimer.updateConfig({
-    workDuration: pomodoroConfig.get('workDuration', 25),
-    breakDuration: pomodoroConfig.get('breakDuration', 5),
-    longBreakDuration: pomodoroConfig.get('longBreakDuration', 15),
-    sessionsUntilLongBreak: pomodoroConfig.get('sessionsUntilLongBreak', 4)
-  });
-
-  // 从游戏状态加载番茄钟数据
-  if (gameState.pomodoro) {
-    pomodoroTimer.loadState(gameState.pomodoro);
-  } else {
-    // 初始化番茄钟状态
-    gameState.pomodoro = {
-      completedToday: 0,
-      completedTotal: 0,
-      currentStreak: 0,
-      longestStreak: 0,
-      lastSessionDate: new Date().toISOString().split('T')[0],
-      settings: {
-        workDuration: 25,
-        shortBreakDuration: 5,
-        longBreakDuration: 15,
-        sessionsUntilLongBreak: 4
-      }
-    };
-  }
-
-  // 创建番茄钟状态栏
-  const pomodoroStatusBar = createPomodoroStatusBar(pomodoroTimer);
-
-  // 开始/暂停番茄钟
-  let togglePomodoroCommand = vscode.commands.registerCommand('funny-vscode-extension.togglePomodoro', function () {
-    const state = pomodoroTimer.getState();
-    
-    if (state.isActive) {
-      // 暂停
-      pomodoroTimer.pause();
-      vscode.window.showInformationMessage('⏸️ 番茄钟已暂停');
-    } else if (state.isPaused) {
-      // 继续
-      pomodoroTimer.resume();
-      vscode.window.showInformationMessage('▶️ 番茄钟继续');
-    } else {
-      // 开始新的工作会话
-      pomodoroTimer.startWork();
-      vscode.window.showInformationMessage('🍅 番茄钟开始！专注工作 25 分钟');
-    }
-  });
-
-  // 停止番茄钟
-  let stopPomodoroCommand = vscode.commands.registerCommand('funny-vscode-extension.stopPomodoro', function () {
-    pomodoroTimer.stop();
-    vscode.window.showInformationMessage('⏹️ 番茄钟已停止');
-  });
-
-  // 开始休息
-  let startPomodoroBreakCommand = vscode.commands.registerCommand('funny-vscode-extension.startPomodoroBreak', function () {
-    const isLongBreak = pomodoroTimer.isLongBreakTime();
-    pomodoroTimer.startBreak(isLongBreak);
-    const duration = isLongBreak ? 15 : 5;
-    vscode.window.showInformationMessage(`☕ 休息时间！放松 ${duration} 分钟`);
-  });
-
-  // 监听番茄钟完成事件
-  eventBus.on('pomodoro:completed', (data) => {
-    if (data.type === 'work') {
-      const isLongBreak = pomodoroTimer.isLongBreakTime();
-      const message = isLongBreak 
-        ? `🎉 完成第 ${data.completedSessions} 个番茄钟！该休息一下了（长休息）`
-        : `✅ 完成第 ${data.completedSessions} 个番茄钟！休息一下吧`;
-      
-      vscode.window.showInformationMessage(message, '开始休息', '继续工作').then(selection => {
-        if (selection === '开始休息') {
-          pomodoroTimer.startBreak(isLongBreak);
-        } else if (selection === '继续工作') {
-          pomodoroTimer.startWork();
-        }
-      });
-      
-      // 保存状态
-      saveGameState(context);
-    } else {
-      vscode.window.showInformationMessage('☕ 休息结束！准备好继续工作了吗？', '开始工作').then(selection => {
-        if (selection === '开始工作') {
-          pomodoroTimer.startWork();
-        }
-      });
-    }
-  });
-
-  // 监听配置变化
-  const pomodoroConfigListener = vscode.workspace.onDidChangeConfiguration(e => {
-    if (e.affectsConfiguration('funny-vscode-extension.pomodoro')) {
-      const config = vscode.workspace.getConfiguration('funny-vscode-extension.pomodoro');
-      pomodoroTimer.updateConfig({
-        workDuration: config.get('workDuration', 25),
-        breakDuration: config.get('breakDuration', 5),
-        longBreakDuration: config.get('longBreakDuration', 15),
-        sessionsUntilLongBreak: config.get('sessionsUntilLongBreak', 4)
-      });
-      logger.info('Pomodoro configuration updated');
-    }
-  });
-
-  resourceManager.registerListener(
-    'pomodoro-config',
-    () => pomodoroConfigListener.dispose(),
-    'Pomodoro config listener'
+  // 打开面板
+  context.subscriptions.push(
+    vscode.commands.registerCommand('coding-buddy.openPanel', () => {
+      vscode.commands.executeCommand('workbench.view.extension.codingBuddyContainer');
+    })
   );
 
-  // ========== 翻译系统 ==========
-
-  const { TranslationProvider } = require('./src/translation/translationProvider');
-  const translationProvider = new TranslationProvider(context);
-  translationProvider.initialize();
-
-  // ========== 代码统计系统 ==========
-
-  const { getCodeStatistics } = require('./src/productivity/codeStatistics');
-  
-  // 初始化代码统计
-  if (!gameState.statistics) {
-    gameState.statistics = {
-      today: {
-        date: new Date().toISOString().split('T')[0],
-        linesAdded: 0,
-        linesDeleted: 0,
-        filesModified: 0,
-        saveCount: 0,
-        sessionDuration: 0,
-        coinsEarned: 0
-      },
-      history: [],
-      topFiles: []
-    };
-  }
-
-  const codeStats = getCodeStatistics(gameState, context.globalState);
-  codeStats.loadState(gameState.statistics);
-  codeStats.initialize();
-
-  // 监听代码变化事件
-  eventBus.on('code:changed', (data) => {
-    // 更新游戏状态
-    if (gameState.statistics && gameState.statistics.today) {
-      gameState.statistics.today.linesAdded = data.linesAdded;
-      gameState.statistics.today.linesDeleted = data.linesDeleted;
-      gameState.statistics.today.filesModified = data.filesModified;
-    }
-  });
-
-  // 监听金币获得事件（关键词奖励）
-  eventBus.on('coins:earned', (data) => {
-    if (data.source === 'keyword') {
-      // 显示通知（可选）
-      // vscode.window.showInformationMessage(`💰 触发关键词 "${data.keyword}" 获得 ${data.amount} 金币！`);
-      
-      // 更新状态栏
-      updateStatusBar();
-      
-      // 保存游戏状态
-      saveGameState(context);
-    }
-  });
-
-  // 每日重置检查（每小时检查一次）
-  const dailyResetTimer = resourceManager.registerTimer(() => {
-    const today = new Date().toISOString().split('T')[0];
-    if (gameState.statistics && gameState.statistics.today.date !== today) {
-      codeStats.resetDaily();
-      pomodoroTimer.resetDaily();
-      
-      // 更新游戏状态
-      gameState.statistics.today = {
-        date: today,
-        linesAdded: 0,
-        linesDeleted: 0,
-        filesModified: 0,
-        saveCount: 0,
-        sessionDuration: 0,
-        coinsEarned: 0
-      };
-      
-      saveGameState(context);
-      logger.info('Daily reset completed');
-    }
-  }, 3600000, true, 'Daily reset check'); // 每小时检查
-
-  // ========== 创建UI组件 ==========
-
-  // 创建金币状态栏
-  const coinStatusBarItem = createStatusBar();
-
-  // 注册侧边栏视图（懒加载）
+  // 开始专注
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider('idleGameView', {
-      resolveWebviewView: async (webviewView) => {
-        // 激活 UI 模块
-        const uiModule = await activationManager.activateModule('ui');
-        if (uiModule && uiModule.webviewProvider) {
-          uiModule.webviewProvider.resolveWebviewView(webviewView);
-        }
+    vscode.commands.registerCommand('coding-buddy.startFocus', () => {
+      const result = startWork();
+      if (result.success) {
+        vscode.window.showInformationMessage('🍅 ' + result.message);
       }
     })
   );
 
-  // ========== 游戏循环定时器 ==========
+  // 暂停专注
+  context.subscriptions.push(
+    vscode.commands.registerCommand('coding-buddy.pauseFocus', () => {
+      const result = pause();
+      vscode.window.showInformationMessage(result.message);
+    })
+  );
 
-  // 每秒增加金币（使用资源管理器）
-  const coinTimer = resourceManager.registerTimer(() => {
-    gameState.coinsPerSecond = calculateCoinsPerSecond();
-    const effectiveProduction = getEffectiveProduction();
-    gameState.coins += effectiveProduction;
-    gameState.totalCoinsEarned += effectiveProduction;
-    updateStatusBar();
-    checkAchievements();
-    eventBus.emit('coins:earned', { amount: effectiveProduction, source: 'passive' });
-  }, 1000, true, 'Coin generation');
+  // 停止专注
+  context.subscriptions.push(
+    vscode.commands.registerCommand('coding-buddy.stopFocus', () => {
+      const result = stop();
+      vscode.window.showInformationMessage(result.message);
+    })
+  );
 
-  // 每10秒自动保存（使用资源管理器）
-  const saveTimer = resourceManager.registerTimer(() => {
-    gameState.lastSaveTime = Date.now();
-    saveGameState(context);
-  }, 10000, true, 'Auto save');
-
-  // ========== 宠物系统事件监听 ==========
-
-  // 合并宠物状态保存和皮肤解锁检查（每30秒）
-  let petCheckCounter = 0;
-  const petMaintenanceTimer = resourceManager.registerTimer(() => {
-    try {
-      // 每次都保存宠物状态
-      gameState.pet = petCore.getState();
-      gameState.ddlTasks = ddlManager.getTasks();
+  // 添加 DDL
+  context.subscriptions.push(
+    vscode.commands.registerCommand('coding-buddy.addDDL', async () => {
+      const name = await vscode.window.showInputBox({
+        prompt: '输入任务名称',
+        placeHolder: '例如: 完成项目报告'
+      });
       
-      // 每2次检查一次皮肤解锁（即每60秒）
-      petCheckCounter++;
-      if (petCheckCounter >= 2) {
-        petCheckCounter = 0;
-        const newUnlocks = skinManager.checkNewUnlocks(gameState);
-        if (newUnlocks.length > 0) {
-          for (const skinId of newUnlocks) {
-            petCore.unlockSkin(skinId);
-            const skin = skinManager.getSkin(skinId);
-            vscode.window.showInformationMessage(
-              `🎉 解锁新皮肤: ${skin.emoji} ${skin.name}!`,
-              '查看'
-            ).then(selection => {
-              if (selection === '查看') {
-                vscode.commands.executeCommand('funny-vscode-extension.changePetSkin');
-              }
-            });
-          }
-          gameState.pet = petCore.getState();
+      if (!name) return;
+      
+      const deadlineStr = await vscode.window.showInputBox({
+        prompt: '输入截止时间',
+        placeHolder: 'YYYY-MM-DD HH:mm',
+        validateInput: (value) => {
+          if (!value) return '请输入截止时间';
+          const date = new Date(value.replace(' ', 'T'));
+          if (isNaN(date.getTime())) return '日期格式错误';
+          if (date < new Date()) return '截止时间不能早于现在';
+          return null;
         }
+      });
+      
+      if (!deadlineStr) return;
+      
+      const deadline = new Date(deadlineStr.replace(' ', 'T'));
+      addTask(name, deadline);
+      vscode.window.showInformationMessage(`📝 已添加 DDL: ${name}`);
+    })
+  );
+
+  // 查看 DDL
+  context.subscriptions.push(
+    vscode.commands.registerCommand('coding-buddy.viewDDL', () => {
+      const tasks = getPendingTasks();
+      
+      if (tasks.length === 0) {
+        vscode.window.showInformationMessage('🎉 目前没有待完成的 DDL！');
+        return;
       }
       
-      // 注意：不在这里调用saveGameState，由主保存定时器统一处理
-    } catch (error) {
-      logger.error('Error in pet maintenance timer:', error);
+      const items = tasks.map(task => {
+        const countdown = getTaskCountdown(task.id);
+        return {
+          label: task.name,
+          description: countdown?.overdue ? '⚠️ 已过期' : `⏰ ${countdown?.text}`
+        };
+      });
+      
+      vscode.window.showQuickPick(items, { placeHolder: '你的 DDL 列表' });
+    })
+  );
+
+  // ========== 监听代码变化 ==========
+  
+  codeChangeListener = vscode.workspace.onDidChangeTextDocument((event) => {
+    if (event.document.uri.scheme !== 'file') return;
+    
+    const changes = event.contentChanges;
+    if (changes.length === 0) return;
+    
+    let linesAdded = 0;
+    let linesDeleted = 0;
+    
+    for (const change of changes) {
+      const addedLines = change.text.split('\n').length - 1;
+      const deletedLines = change.range.end.line - change.range.start.line;
+      
+      linesAdded += addedLines;
+      linesDeleted += deletedLines;
     }
-  }, 30000, true, 'Pet maintenance'); // 每30秒
+    
+    // 发送代码变化事件
+    getEventBus().emit('code:changed', {
+      fileName: event.document.fileName,
+      linesAdded: Math.max(0, linesAdded),
+      linesDeleted: Math.max(0, linesDeleted)
+    });
+  });
+  
+  context.subscriptions.push(codeChangeListener);
 
-  // 专注模式完成后宠物提示
-  eventBus.on('pomodoro:completed', (data) => {
-    if (data.type === 'work') {
-      // 40分钟专注完成后提示生成截图
-      const config = vscode.workspace.getConfiguration('funny-vscode-extension.pomodoro');
-      const workDuration = config.get('workDuration', 25);
+  // ========== 自动保存 ==========
+  
+  saveTimer = setInterval(() => {
+    checkDailyReset();
+    saveState();
+  }, 30000); // 每30秒保存
 
-      if (workDuration >= 40) {
-        setTimeout(() => {
-          vscode.window.showInformationMessage(
-            '🎉 完成专注模式! 要不要生成一张胜利截图纪念一下?',
-            '生成截图',
-            '下次再说'
-          ).then(selection => {
-            if (selection === '生成截图') {
-              vscode.commands.executeCommand('funny-vscode-extension.generateCodeImage');
-            }
-          });
-        }, 5000);
-      }
+  // ========== 监听聊天命令 ==========
+  
+  getEventBus().on('chat:command', (data) => {
+    if (data.action === 'startFocus') {
+      startWork();
     }
   });
 
-  // ========== 注册到订阅 ==========
-
-  // 宠物系统命令
-  context.subscriptions.push(togglePetCommand);
-  context.subscriptions.push(addDDLCommand);
-  context.subscriptions.push(viewDDLCommand);
-  context.subscriptions.push(generateCodeImageCommand);
-  context.subscriptions.push(changePetSkinCommand);
-  context.subscriptions.push(interactPetCommand);
-  context.subscriptions.push(togglePetWorkModeCommand);
-  context.subscriptions.push(cyclePetModeCommand);
-
-  // 原有命令
-  context.subscriptions.push(openSidebarCommand);
-  context.subscriptions.push(clickCoinCommand);
-  context.subscriptions.push(showSaveInfoCommand);
-  context.subscriptions.push(openSaveFolderCommand);
-  context.subscriptions.push(backupSaveCommand);
-  context.subscriptions.push(togglePomodoroCommand);
-  context.subscriptions.push(stopPomodoroCommand);
-  context.subscriptions.push(startPomodoroBreakCommand);
-  context.subscriptions.push(coinStatusBarItem);
-  context.subscriptions.push(pomodoroStatusBar);
-  context.subscriptions.push(petStatusBarItem);
-
-  logger.info('Extension activated successfully with Pet System');
-}
-
-/**
- * 注册懒加载模块
- */
-function registerLazyModules(activationManager, context) {
-  const logger = getLogger();
-
-  // UI 模块（当侧边栏打开时加载）
-  activationManager.registerModule(
-    'ui',
-    async () => {
-      logger.info('Loading UI module...');
-      // 暂时使用原始的 webview.js，保持完整功能
-      const IdleGameViewProvider = require('./src/ui/webview');
-      
-      // 根据配置选择特效系统
-      const config = vscode.workspace.getConfiguration('funny-vscode-extension');
-      const effectStyle = config.get('effectStyle', 'enhanced');
-      
-      if (effectStyle === 'enhanced') {
-        const { initEnhancedCodeEffect } = require('./src/ui/enhancedCodeEffect');
-        initEnhancedCodeEffect(context);
-        logger.info('Using enhanced CSS-based effects');
-      } else {
-        const { initCoinParticleEffect } = require('./src/ui/coinParticleEffect');
-        initCoinParticleEffect(context);
-        logger.info('Using classic emoji effects');
-      }
-      
-      const webviewProvider = new IdleGameViewProvider(context);
-      
-      return { webviewProvider };
-    },
-    ['onView:idleGameView']
-  );
-
-  // 战斗系统（当首次访问战斗标签时加载）
-  activationManager.registerModule(
-    'battle',
-    async () => {
-      logger.info('Loading battle system...');
-      const { getBattleSystem } = require('./src/game/battleSystem');
-      return { battleSystem: getBattleSystem() };
-    },
-    []
-  );
-
-  // 抽奖系统（当首次访问抽奖标签时加载）
-  activationManager.registerModule(
-    'lottery',
-    async () => {
-      logger.info('Loading lottery system...');
-      const lottery = require('./src/game/lottery');
-      return { lottery };
-    },
-    []
-  );
-
-  logger.info('Lazy modules registered');
+  console.log('Coding Buddy activated!');
 }
 
 /**
  * 停用扩展
  */
-async function deactivate() {
-  const logger = getLogger();
-  const activationManager = getActivationManager();
-  const resourceManager = getResourceManager();
-  const performanceMonitor = getPerformanceMonitor();
-
-  logger.info('Extension deactivating...');
-
-  // 停止性能监控
-  performanceMonitor.stop();
-
-  // 停用所有模块
-  await activationManager.deactivateAll();
-
-  // 清理所有资源
-  resourceManager.cleanup();
-
-  logger.info('Extension deactivated');
+function deactivate() {
+  console.log('Coding Buddy deactivating...');
+  
+  // 保存状态
+  saveState();
+  
+  // 清理定时器
+  if (saveTimer) clearInterval(saveTimer);
+  
+  // 清理模块
+  disposeBuddy();
+  disposeDDL();
+  disposeFocus();
+  disposeStatusBar();
+  
+  // 清理事件总线
+  getEventBus().clear();
+  
+  console.log('Coding Buddy deactivated');
 }
 
-module.exports = {
-  activate,
-  deactivate
-};
+module.exports = { activate, deactivate };

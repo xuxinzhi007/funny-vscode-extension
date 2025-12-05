@@ -1,8 +1,8 @@
 {
-  "name": "funny-vscode-extension",
-  "displayName": "Coding Idle Game",
-  "description": "An idle game for coders! Earn coins while coding, with particle effects, keyword explosions, and upgrade systems. Make programming fun and rewarding!",
-  "version": "1.0.3",
+  "name": "coding-buddy",
+  "displayName": "Coding Buddy - 编程搭子",
+  "description": "一个住在 VSCode 里的小伙伴，陪你写代码、管理 DDL、专注工作",
+  "version": "2.0.0",
   "publisher": "xinzhixu",
   "author": {
     "name": "xuxinzhi007"
@@ -10,39 +10,35 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/xuxinzhi007/funny-vscode-extension"
+    "url": "https://github.com/xuxinzhi007/coding-buddy"
   },
   "bugs": {
-    "url": "https://github.com/xuxinzhi007/funny-vscode-extension/issues"
+    "url": "https://github.com/xuxinzhi007/coding-buddy/issues"
   },
-  "homepage": "https://github.com/xuxinzhi007/funny-vscode-extension#readme",
+  "homepage": "https://github.com/xuxinzhi007/coding-buddy#readme",
   "keywords": [
-    "game",
-    "idle game",
-    "fun",
-    "entertainment",
-    "effects",
-    "particles",
-    "animation",
-    "coding effects",
-    "gamification",
+    "pet",
+    "buddy",
+    "companion",
+    "pomodoro",
+    "focus",
+    "ddl",
     "productivity",
-    "挂机游戏",
-    "编码特效",
-    "趣味",
-    "金币",
-    "特效"
+    "gamification",
+    "编程搭子",
+    "番茄钟",
+    "专注",
+    "宠物"
   ],
   "engines": {
     "vscode": "^1.60.0"
   },
   "categories": [
-    "Other",
-    "Visualization"
+    "Other"
   ],
   "icon": "icon.png",
   "galleryBanner": {
-    "color": "#FFD700",
+    "color": "#4ECDC4",
     "theme": "light"
   },
   "activationEvents": [
@@ -52,394 +48,111 @@
   "contributes": {
     "commands": [
       {
-        "command": "funny-vscode-extension.clickCoin",
-        "title": "点击获得金币"
+        "command": "coding-buddy.openPanel",
+        "title": "🐱 打开编程搭子"
       },
       {
-        "command": "funny-vscode-extension.showSaveInfo",
-        "title": "查看存档信息",
-        "icon": "$(info)"
+        "command": "coding-buddy.startFocus",
+        "title": "🍅 开始专注"
       },
       {
-        "command": "funny-vscode-extension.openSaveFolder",
-        "title": "打开存档文件夹",
-        "icon": "$(folder-opened)"
+        "command": "coding-buddy.pauseFocus",
+        "title": "⏸️ 暂停专注"
       },
       {
-        "command": "funny-vscode-extension.backupSave",
-        "title": "备份存档",
-        "icon": "$(archive)"
+        "command": "coding-buddy.stopFocus",
+        "title": "⏹️ 停止专注"
       },
       {
-        "command": "funny-vscode-extension.togglePomodoro",
-        "title": "开始/暂停番茄钟"
+        "command": "coding-buddy.addDDL",
+        "title": "📝 添加 DDL"
       },
       {
-        "command": "funny-vscode-extension.stopPomodoro",
-        "title": "停止番茄钟"
-      },
-      {
-        "command": "funny-vscode-extension.startPomodoroBreak",
-        "title": "开始休息"
-      },
-      {
-        "command": "funny-vscode-extension.translateSelection",
-        "title": "🌐 翻译选中文本"
-      },
-      {
-        "command": "funny-vscode-extension.suggestVariableName",
-        "title": "💡 变量名建议"
-      },
-      {
-        "command": "funny-vscode-extension.openTranslationSettings",
-        "title": "翻译设置",
-        "icon": "$(settings-gear)"
-      },
-      {
-        "command": "funny-vscode-extension.clearTranslationCache",
-        "title": "清除翻译缓存"
-      },
-      {
-        "command": "funny-vscode-extension.togglePet",
-        "title": "🐱 显示/隐藏编程搭子"
-      },
-      {
-        "command": "funny-vscode-extension.addDDL",
-        "title": "⏰ 添加DDL任务"
-      },
-      {
-        "command": "funny-vscode-extension.viewDDL",
-        "title": "📋 查看DDL列表"
-      },
-      {
-        "command": "funny-vscode-extension.generateCodeImage",
-        "title": "📸 生成代码截图",
-        "icon": "$(device-camera)"
-      },
-      {
-        "command": "funny-vscode-extension.changePetSkin",
-        "title": "🎨 切换搭子皮肤"
-      },
-      {
-        "command": "funny-vscode-extension.interactPet",
-        "title": "❤️ 与搭子互动"
-      },
-      {
-        "command": "funny-vscode-extension.togglePetWorkMode",
-        "title": "🔄 切换搭子显示模式"
-      },
-      {
-        "command": "funny-vscode-extension.cyclePetMode",
-        "title": "⚡ 快速切换搭子模式"
+        "command": "coding-buddy.viewDDL",
+        "title": "📋 查看 DDL"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "idleGameContainer",
-          "title": "挂机游戏",
-          "icon": "$(star-full)"
+          "id": "codingBuddyContainer",
+          "title": "编程搭子",
+          "icon": "$(heart)"
         }
       ]
     },
     "views": {
-      "idleGameContainer": [
+      "codingBuddyContainer": [
         {
           "type": "webview",
-          "id": "idleGameView",
-          "name": "金币挂机"
-        }
-      ]
-    },
-    "menus": {
-      "editor/context": [
-        {
-          "command": "funny-vscode-extension.translateSelection",
-          "when": "editorHasSelection",
-          "group": "9_cutcopypaste"
-        },
-        {
-          "command": "funny-vscode-extension.suggestVariableName",
-          "when": "editorTextFocus",
-          "group": "9_cutcopypaste"
-        },
-        {
-          "command": "funny-vscode-extension.generateCodeImage",
-          "when": "editorTextFocus",
-          "group": "z_commands"
-        }
-      ],
-      "view/title": [
-        {
-          "command": "funny-vscode-extension.showSaveInfo",
-          "when": "view == idleGameView",
-          "group": "navigation"
-        },
-        {
-          "command": "funny-vscode-extension.openSaveFolder",
-          "when": "view == idleGameView",
-          "group": "1_save@1"
-        },
-        {
-          "command": "funny-vscode-extension.backupSave",
-          "when": "view == idleGameView",
-          "group": "1_save@2"
-        }
-      ],
-      "commandPalette": [
-        {
-          "command": "funny-vscode-extension.showSaveInfo",
-          "when": "true"
-        },
-        {
-          "command": "funny-vscode-extension.openSaveFolder",
-          "when": "true"
-        },
-        {
-          "command": "funny-vscode-extension.backupSave",
-          "when": "true"
+          "id": "codingBuddyView",
+          "name": "搭子"
         }
       ]
     },
     "keybindings": [
       {
-        "command": "funny-vscode-extension.clickCoin",
-        "key": "ctrl+alt+c",
-        "mac": "cmd+alt+c"
+        "command": "coding-buddy.openPanel",
+        "key": "ctrl+alt+b",
+        "mac": "cmd+alt+b"
       },
       {
-        "command": "funny-vscode-extension.translateSelection",
-        "key": "ctrl+alt+t",
-        "mac": "cmd+alt+t",
-        "when": "editorTextFocus"
+        "command": "coding-buddy.startFocus",
+        "key": "ctrl+alt+f",
+        "mac": "cmd+alt+f"
       },
       {
-        "command": "funny-vscode-extension.suggestVariableName",
-        "key": "ctrl+alt+v",
-        "mac": "cmd+alt+v",
-        "when": "editorTextFocus"
-      },
-      {
-        "command": "funny-vscode-extension.togglePet",
-        "key": "ctrl+alt+p",
-        "mac": "cmd+alt+p"
-      },
-      {
-        "command": "funny-vscode-extension.addDDL",
+        "command": "coding-buddy.addDDL",
         "key": "ctrl+shift+d",
         "mac": "cmd+shift+d"
-      },
-      {
-        "command": "funny-vscode-extension.generateCodeImage",
-        "key": "ctrl+alt+i",
-        "mac": "cmd+alt+i",
-        "when": "editorTextFocus"
       }
     ],
     "configuration": {
-      "title": "Coding Idle Game",
+      "title": "Coding Buddy",
       "properties": {
-        "funny-vscode-extension.enableRippleEffect": {
-          "type": "boolean",
-          "default": false,
-          "description": "启用鼠标点击波纹特效"
-        },
-        "funny-vscode-extension.rippleSize": {
-          "type": "number",
-          "default": 100,
-          "minimum": 50,
-          "maximum": 300,
-          "description": "波纹特效的大小（像素）"
-        },
-        "funny-vscode-extension.enableCodeEffect": {
-          "type": "boolean",
-          "default": false,
-          "description": "启用编码特效（金币粒子特效）"
-        },
-        "funny-vscode-extension.effectStyle": {
-          "type": "string",
-          "enum": [
-            "classic",
-            "enhanced"
-          ],
-          "default": "enhanced",
-          "description": "特效样式：classic=表情符号，enhanced=CSS动画"
-        },
-        "funny-vscode-extension.keywordCategories": {
-          "type": "object",
-          "default": {
-            "functions": {
-              "enabled": true,
-              "keywords": [
-                "function",
-                "func",
-                "def",
-                "fn",
-                "async",
-                "await"
-              ],
-              "symbols": [
-                "💥",
-                "🔥",
-                "⚡",
-                "✨"
-              ]
-            },
-            "classes": {
-              "enabled": true,
-              "keywords": [
-                "class",
-                "interface",
-                "struct",
-                "enum",
-                "type"
-              ],
-              "symbols": [
-                "💎",
-                "👑",
-                "🌟",
-                "⭐"
-              ]
-            },
-            "loops": {
-              "enabled": true,
-              "keywords": [
-                "for",
-                "while",
-                "loop",
-                "foreach",
-                "map",
-                "filter"
-              ],
-              "symbols": [
-                "🔄",
-                "♻️",
-                "🌀",
-                "⚙️"
-              ]
-            },
-            "conditions": {
-              "enabled": true,
-              "keywords": [
-                "if",
-                "else",
-                "switch",
-                "case",
-                "when",
-                "match"
-              ],
-              "symbols": [
-                "❓",
-                "❗",
-                "⚠️",
-                "🎯"
-              ]
-            },
-            "variables": {
-              "enabled": true,
-              "keywords": [
-                "const",
-                "let",
-                "var",
-                "val"
-              ],
-              "symbols": [
-                "📦",
-                "🎁",
-                "📫",
-                "🗃️"
-              ]
-            },
-            "returns": {
-              "enabled": true,
-              "keywords": [
-                "return",
-                "yield",
-                "break",
-                "continue"
-              ],
-              "symbols": [
-                "↩️",
-                "⬅️",
-                "🔙",
-                "↪️"
-              ]
-            }
-          },
-          "description": "关键词类别配置"
-        },
-        "funny-vscode-extension.pomodoro.workDuration": {
+        "coding-buddy.focus.workMinutes": {
           "type": "number",
           "default": 25,
           "minimum": 1,
           "maximum": 60,
-          "description": "番茄钟工作时长（分钟）"
+          "description": "专注工作时长（分钟）"
         },
-        "funny-vscode-extension.pomodoro.breakDuration": {
+        "coding-buddy.focus.breakMinutes": {
           "type": "number",
           "default": 5,
           "minimum": 1,
           "maximum": 30,
           "description": "短休息时长（分钟）"
         },
-        "funny-vscode-extension.pomodoro.longBreakDuration": {
+        "coding-buddy.focus.longBreakMinutes": {
           "type": "number",
           "default": 15,
           "minimum": 5,
           "maximum": 60,
           "description": "长休息时长（分钟）"
         },
-        "funny-vscode-extension.pomodoro.sessionsUntilLongBreak": {
+        "coding-buddy.focus.sessionsUntilLongBreak": {
           "type": "number",
           "default": 4,
           "minimum": 2,
           "maximum": 10,
-          "description": "几个工作周期后进行长休息"
+          "description": "几个专注周期后进行长休息"
         },
-        "funny-vscode-extension.pomodoro.autoStartBreak": {
-          "type": "boolean",
-          "default": false,
-          "description": "工作结束后自动开始休息"
-        },
-        "funny-vscode-extension.translation.provider": {
+        "coding-buddy.ai.provider": {
           "type": "string",
-          "enum": [
-            "baidu",
-            "custom"
-          ],
-          "default": "baidu",
-          "description": "翻译服务提供商",
-          "enumDescriptions": [
-            "百度翻译（需要申请 AppID 和密钥）",
-            "自定义API（需要配置API地址）"
-          ]
+          "enum": ["none", "openai", "claude", "custom"],
+          "default": "none",
+          "description": "AI 聊天提供商（none = 使用预设对话）"
         },
-        "funny-vscode-extension.translation.baiduAppId": {
+        "coding-buddy.ai.apiKey": {
           "type": "string",
           "default": "",
-          "description": "百度翻译 AppID（在 https://fanyi-api.baidu.com 申请）"
+          "description": "AI API 密钥"
         },
-        "funny-vscode-extension.translation.baiduSecretKey": {
+        "coding-buddy.ai.apiUrl": {
           "type": "string",
           "default": "",
-          "description": "百度翻译密钥"
-        },
-        "funny-vscode-extension.translation.customApiUrl": {
-          "type": "string",
-          "default": "",
-          "description": "自定义翻译API地址（POST请求）"
-        },
-        "funny-vscode-extension.translation.customApiKey": {
-          "type": "string",
-          "default": "",
-          "description": "自定义API密钥（可选）"
-        },
-        "funny-vscode-extension.translation.timeout": {
-          "type": "number",
-          "default": 5000,
-          "minimum": 1000,
-          "maximum": 30000,
-          "description": "翻译请求超时时间（毫秒）"
+          "description": "自定义 AI API 地址"
         }
       }
     }
