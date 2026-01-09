@@ -3,8 +3,8 @@
  */
 
 const vscode = require('vscode');
-const { getState, saveState } = require('./state');
-const { getEventBus } = require('../core/eventBus');
+const { getState, saveState } = require('../buddy/state');
+const { getEventBus } = require('../../core/eventBus');
 
 let checkTimer = null;
 

@@ -4,12 +4,12 @@
  */
 
 const vscode = require('vscode');
-const { getState, saveState } = require('../buddy/state');
-const { getCurrentEmoji, interact, changeSkin, getAllSkins } = require('../buddy/buddy');
-const { processMessage, getProactiveMessage } = require('../buddy/chat');
-const { addTask, completeTask, deleteTask, getPendingTasks, getTaskCountdown } = require('../buddy/ddl');
-const { startWork, startBreak, pause, resume, stop, getFocusState } = require('../buddy/focus');
-const { getEventBus } = require('../core/eventBus');
+const { getState, saveState } = require('../../modules/buddy/state');
+const { getCurrentEmoji, interact, changeSkin, getAllSkins } = require('../../modules/buddy/buddy');
+const { processMessage, getProactiveMessage } = require('../../modules/chat/processor');
+const { addTask, completeTask, deleteTask, getPendingTasks, getTaskCountdown } = require('../../modules/tasks/manager');
+const { startWork, startBreak, pause, resume, stop, getFocusState } = require('../../modules/focus/timer');
+const { getEventBus } = require('../../core/eventBus');
 
 class BuddyWebviewProvider {
   constructor(context) {

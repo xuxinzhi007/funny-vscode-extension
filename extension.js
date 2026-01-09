@@ -9,14 +9,14 @@ const vscode = require('vscode');
 const { getEventBus } = require('./src/core/eventBus');
 
 // 搭子模块
-const { initState, getState, saveState, checkDailyReset } = require('./src/buddy/state');
-const { initBuddy, dispose: disposeBuddy } = require('./src/buddy/buddy');
-const { initDDL, addTask, getPendingTasks, getTaskCountdown, dispose: disposeDDL } = require('./src/buddy/ddl');
-const { startWork, startBreak, pause, resume, stop, getFocusState, dispose: disposeFocus } = require('./src/buddy/focus');
+const { initState, getState, saveState, checkDailyReset } = require('./src/modules/buddy/state');
+const { initBuddy, dispose: disposeBuddy } = require('./src/modules/buddy/buddy');
+const { initDDL, addTask, getPendingTasks, getTaskCountdown, dispose: disposeDDL } = require('./src/modules/tasks/manager');
+const { startWork, startBreak, pause, resume, stop, getFocusState, dispose: disposeFocus } = require('./src/modules/focus/timer');
 
 // UI 模块
-const { createStatusBar, dispose: disposeStatusBar } = require('./src/ui/statusBar');
-const { BuddyWebviewProvider } = require('./src/ui/webviewPanel');
+const { createStatusBar, dispose: disposeStatusBar } = require('./src/ui/components/statusBar');
+const { BuddyWebviewProvider } = require('./src/ui/components/webviewProvider');
 
 let saveTimer = null;
 let codeChangeListener = null;

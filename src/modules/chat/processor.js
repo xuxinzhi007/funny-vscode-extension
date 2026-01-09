@@ -4,8 +4,8 @@
  */
 
 const vscode = require('vscode');
-const { getState } = require('./state');
-const { getEventBus } = require('../core/eventBus');
+const { getState } = require('../buddy/state');
+const { getEventBus } = require('../../core/eventBus');
 
 // 预设对话库
 const PRESET_RESPONSES = {
@@ -105,68 +105,6 @@ const PRESET_RESPONSES = {
       '你可以问我今天的统计、DDL，或者让我帮你开启专注模式哦',
       '试试输入 /stats 查看统计，/ddl 查看任务，/focus 开始专注'
     ]
-  }
-};
-
-// 主动对话触发器
-const PROACTIVE_MESSAGES = {
-  // 早上好
-  morning: {
-    condition: () => {
-      const hour = new Date().getHours();
-      return hour >= 6 && hour < 10;
-    },
-    messages: [
-      '早上好！新的一天，新的代码 ☀️',
-      '早安！今天也要加油哦 💪',
-      '早上好～准备好开始了吗？'
-    ],
-    cooldown: 3600000 * 4 // 4小时内不重复
-  },
-  
-  // 深夜提醒
-  lateNight: {
-    condition: () => {
-      const hour = new Date().getHours();
-      return hour >= 22 || hour < 2;
-    },
-    messages: [
-      '这么晚了还在写代码？注意休息呀 🌙',
-      '夜深了，要不要早点休息？明天继续也不迟',
-      '熬夜伤身体，早点睡吧 😴'
-    ],
-    cooldown: 3600000 * 2
-  },
-  
-  // 长时间编码
-  longCoding: {
-    condition: (state) => {
-      const lastInteraction = state.buddy.lastInteraction;
-      return Date.now() - lastInteraction > 3600000; // 1小时
-    },
-    messages: [
-      '写了好久了，要不要休息一下？',
-      '专注是好事，但也要注意眼睛哦 👀',
-      '起来活动活动吧，我等你回来～'
-    ],
-    cooldown: 1800000 // 30分钟
-  },
-  
-  // DDL 临近
-  ddlUrgent: {
-    condition: (state) => {
-      const tasks = state.ddlTasks.filter(t => !t.completed);
-      return tasks.some(t => {
-        const hours = (new Date(t.deadline) - new Date()) / 3600000;
-        return hours > 0 && hours < 2;
-      });
-    },
-    messages: [
-      '😰 有个 DDL 快到了，要不要先处理一下？',
-      '⚠️ 提醒你一下，有任务快截止了！',
-      '📢 DDL 警报！还有不到 2 小时！'
-    ],
-    cooldown: 1800000
   }
 };
 
@@ -334,19 +272,8 @@ function getProactiveMessage() {
   const state = getState();
   const now = Date.now();
   
-  for (const [key, config] of Object.entries(PROACTIVE_MESSAGES)) {
-    // 检查冷却时间
-    if (lastProactiveTime[key] && now - lastProactiveTime[key] < config.cooldown) {
-      continue;
-    }
-    
-    // 检查条件
-    if (config.condition(state)) {
-      lastProactiveTime[key] = now;
-      return randomPick(config.messages);
-    }
-  }
-  
+  // 简化版本，移除 PROACTIVE_MESSAGES 结构
+  // 可根据需要扩展
   return null;
 }
 

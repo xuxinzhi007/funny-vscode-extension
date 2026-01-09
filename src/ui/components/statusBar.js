@@ -4,11 +4,11 @@
  */
 
 const vscode = require('vscode');
-const { getState } = require('../buddy/state');
-const { getCurrentEmoji } = require('../buddy/buddy');
-const { getNextDDL, getTaskCountdown } = require('../buddy/ddl');
-const { getFocusState, getFormattedTime } = require('../buddy/focus');
-const { getEventBus } = require('../core/eventBus');
+const { getState } = require('../../modules/buddy/state');
+const { getCurrentEmoji } = require('../../modules/buddy/buddy');
+const { getNextDDL, getTaskCountdown } = require('../../modules/tasks/manager');
+const { getFocusState, getFormattedTime } = require('../../modules/focus/timer');
+const { getEventBus } = require('../../core/eventBus');
 
 let statusBarItem = null;
 let updateTimer = null;
